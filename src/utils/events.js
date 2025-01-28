@@ -12,6 +12,7 @@ import { setWidth } from './columns.js';
 import { moveRow, setHeight } from './rows.js';
 import version from './version.js';
 import { getCellNameFromCoords } from './helpers.js';
+import { SA_PROMPT } from './sa_functions.js'
 
 const getElement = function(element) {
     let jssSection = 0;
@@ -803,7 +804,7 @@ const getRole = function(element) {
 const defaultContextMenu = function(worksheet, x, y, role) {
     const items = [];
 
-    if (role === 'header') {
+    // if (role === 'header') {
         // Insert a new column
         if (worksheet.options.allowInsertColumn != false) {
             items.push({
@@ -834,38 +835,38 @@ const defaultContextMenu = function(worksheet, x, y, role) {
         }
 
         // Rename column
-        if (worksheet.options.allowRenameColumn != false) {
-            items.push({
-                title: jSuites.translate('Rename this column'),
-                onclick:function() {
-                    const oldValue = worksheet.getHeader(x);
+        // if (worksheet.options.allowRenameColumn != false) {
+        //     items.push({
+        //         title: jSuites.translate('Rename this column'),
+        //         onclick:function() {
+        //             const oldValue = worksheet.getHeader(x);
 
-                    const newValue = prompt(jSuites.translate('Column name'), oldValue);
+        //             const newValue = prompt(jSuites.translate('Column name'), oldValue);
 
-                    worksheet.setHeader(x, newValue);
-                }
-            });
-        }
+        //             worksheet.setHeader(x, newValue);
+        //         }
+        //     });
+        // }
 
-        // Sorting
-        if (worksheet.options.columnSorting != false) {
-            // Line
-            items.push({ type:'line' });
+        // // Sorting
+        // if (worksheet.options.columnSorting != false) {
+        //     // Line
+        //     items.push({ type:'line' });
 
-            items.push({
-                title: jSuites.translate('Order ascending'),
-                onclick:function() {
-                    worksheet.orderBy(x, 0);
-                }
-            });
-            items.push({
-                title: jSuites.translate('Order descending'),
-                onclick:function() {
-                    worksheet.orderBy(x, 1);
-                }
-            });
-        }
-    }
+        //     items.push({
+        //         title: jSuites.translate('Order ascending'),
+        //         onclick:function() {
+        //             worksheet.orderBy(x, 0);
+        //         }
+        //     });
+        //     items.push({
+        //         title: jSuites.translate('Order descending'),
+        //         onclick:function() {
+        //             worksheet.orderBy(x, 1);
+        //         }
+        //     });
+        // }
+    // }
 
     if (role === 'row' || role === 'cell') {
         // Insert new row
@@ -896,89 +897,127 @@ const defaultContextMenu = function(worksheet, x, y, role) {
     }
 
     if (role === 'cell') {
-        if (worksheet.options.allowComments != false) {
-            items.push({ type:'line' });
+        const selection = this.getSelectedContainer
 
-            const title = worksheet.records[y][x].element.getAttribute('title') || '';
+        if (selection.length === 4) {
+          const [startCol, startRow, endCol, endRow] = selection
+          const colName = jspreadsheet.helpers.getColumnName(Number(startCol))
+          const cellName = `${colName}${Number(startRow) + 1}`
+          const mergedCells = instance.getMerge(cellName)
+          let colspan = endCol - startCol + 1
+          let rowspan = endRow - startCol + 1
 
+          if (mergedCells) {
             items.push({
-                title: jSuites.translate(title ? 'Edit comments' : 'Add comments'),
-                onclick:function() {
-                    const comment = prompt(jSuites.translate('Comments'), title);
-                    if (comment) {
-                        worksheet.setComments(getCellNameFromCoords(x, y), comment);
-                    }
-                }
-            });
-
-            if (title) {
-                items.push({
-                    title: jSuites.translate('Clear comments'),
-                    onclick:function() {
-                        worksheet.setComments(getCellNameFromCoords(x, y), '');
-                    }
-                });
-            }
+              title: jSuites.translate('Unmerge cells'),
+              onclick: function () {
+                worksheet.SA_setMerge({
+                  cellName,
+                  rowspan,
+                  colspan,
+                })
+              },
+            })
+          } else {
+            items.push({
+              title: jSuites.translate('Merge cells'),
+              onclick: function () {
+                worksheet.SA_setMerge({
+                  cellName,
+                  rowspan,
+                  colspan,
+                })
+              },
+            })
+          }
         }
+
     }
+
+    // if (role === 'cell') {
+    //     if (worksheet.options.allowComments != false) {
+    //         items.push({ type:'line' });
+
+    //         const title = worksheet.records[y][x].element.getAttribute('title') || '';
+
+    //         items.push({
+    //             title: jSuites.translate(title ? 'Edit comments' : 'Add comments'),
+    //             onclick:function() {
+    //                 const comment = prompt(jSuites.translate('Comments'), title);
+    //                 if (comment) {
+    //                     worksheet.setComments(getCellNameFromCoords(x, y), comment);
+    //                 }
+    //             }
+    //         });
+
+    //         if (title) {
+    //             items.push({
+    //                 title: jSuites.translate('Clear comments'),
+    //                 onclick:function() {
+    //                     worksheet.setComments(getCellNameFromCoords(x, y), '');
+    //                 }
+    //             });
+    //         }
+    //     }
+    // }
 
     // Line
-    if (items.length !== 0) {
-        items.push({ type:'line' });
-    }
+    // if (items.length !== 0) {
+    //     items.push({ type:'line' });
+    // }
 
     // Copy
-    if (role === 'header' || role === 'row' || role === 'cell') {
-        items.push({
-            title: jSuites.translate('Copy') + '...',
-            shortcut:'Ctrl + C',
-            onclick:function() {
-                copy.call(worksheet, true);
-            }
-        });
+    // if (role === 'header' || role === 'row' || role === 'cell') {
+    //     items.push({
+    //         title: jSuites.translate('Copy') + '...',
+    //         shortcut:'Ctrl + C',
+    //         onclick:function() {
+    //             copy.call(worksheet, true);
+    //         }
+    //     });
 
-        // Paste
-        if (navigator && navigator.clipboard) {
-            items.push({
-                title: jSuites.translate('Paste') + '...',
-                shortcut:'Ctrl + V',
-                onclick:function() {
-                    if (worksheet.selectedCell) {
-                        navigator.clipboard.readText().then(function(text) {
-                            if (text) {
-                                paste.call(worksheet, worksheet.selectedCell[0], worksheet.selectedCell[1], text);
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    }
+    //     // Paste
+    //     if (navigator && navigator.clipboard) {
+    //         items.push({
+    //             title: jSuites.translate('Paste') + '...',
+    //             shortcut:'Ctrl + V',
+    //             onclick:function() {
+    //                 if (worksheet.selectedCell) {
+    //                     navigator.clipboard.readText().then(function(text) {
+    //                         if (text) {
+    //                             paste.call(worksheet, worksheet.selectedCell[0], worksheet.selectedCell[1], text);
+    //                         }
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     }
+    // }
 
     // Save
-    if (worksheet.parent.config.allowExport != false) {
-        items.push({
-            title: jSuites.translate('Save as') + '...',
-            shortcut: 'Ctrl + S',
-            onclick: function () {
-                worksheet.download();
-            }
-        });
-    }
+    // if (worksheet.parent.config.allowExport != false) {
+    //     items.push({
+    //         title: jSuites.translate('Save as') + '...',
+    //         shortcut: 'Ctrl + S',
+    //         onclick: function () {
+    //             worksheet.download();
+    //         }
+    //     });
+    // }
 
     // About
-    if (worksheet.parent.config.about != false) {
-        items.push({
-            title: jSuites.translate('About'),
-            onclick:function() {
-                if (typeof worksheet.parent.config.about === 'undefined' || worksheet.parent.config.about === true) {
-                    alert(version.print());
-                } else {
-                    alert(worksheet.parent.config.about);
-                }
-            }
-        });
-    }
+    // if (worksheet.parent.config.about != false) {
+    //     items.push({
+    //         title: jSuites.translate('About'),
+    //         onclick:function() {
+    //             if (typeof worksheet.parent.config.about === 'undefined' || worksheet.parent.config.about === true) {
+    //                 alert(version.print());
+    //             } else {
+    //                 alert(worksheet.parent.config.about);
+    //             }
+    //         }
+    //     });
+    // }
 
     return items;
 }
@@ -1286,15 +1325,54 @@ const keyDownControls = function(e) {
                 if (libraryBase.jspreadsheet.current.options.editable != false) {
                     if (libraryBase.jspreadsheet.current.selectedRow) {
                         if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
-                            if (confirm(jSuites.translate('Are you sure to delete the selected rows?'))) {
-                                libraryBase.jspreadsheet.current.deleteRow();
-                            }
+                            SA_PROMPT(
+                              'Are you sure to delete the selected rows?',
+                              [
+                                {
+                                  text: 'Yes',
+                                  type: 'danger',
+                                  onclick: () => {
+                                    libraryBase.jspreadsheet.current.deleteRow()
+                                  },
+                                },
+                                {
+                                  text: 'No',
+                                  type: 'primary',
+                                  onclick: () => {
+                                    // Do nothing
+                                  },
+                                },
+                              ]
+                            )
+                            // if (confirm(jSuites.translate('Are you sure to delete the selected rows?'))) {
+                            //     libraryBase.jspreadsheet.current.deleteRow();
+                            // }
                         }
                     } else if (libraryBase.jspreadsheet.current.selectedHeader) {
                         if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
-                            if (confirm(jSuites.translate('Are you sure to delete the selected columns?'))) {
-                                libraryBase.jspreadsheet.current.deleteColumn();
-                            }
+                            SA_PROMPT(
+                              'Are you sure to delete the selected columns?',
+                              [
+                                {
+                                  text: 'Yes',
+                                  type: 'danger',
+                                  onclick: () => {
+                                    libraryBase.jspreadsheet.current.deleteColumn()
+                                  },
+                                },
+                                {
+                                  text: 'No',
+                                  type: 'primary',
+                                  onclick: () => {
+                                    // Do nothing
+                                  },
+                                },
+                              ]
+                            )
+                            
+                            // if (confirm(jSuites.translate('Are you sure to delete the selected columns?'))) {
+                            //     libraryBase.jspreadsheet.current.deleteColumn();
+                            // }
                         }
                     } else {
                         // Change value

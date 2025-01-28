@@ -129,19 +129,17 @@ const safeTrim = (v) => {
 }
 
 
-/**
- * Merge cells
- * @param {cellName, colspan, rowspan, ignoreHistoryAndEvents, reMarging} 
- **/ 
-
 export const SA_setMerge = function ({
     cellName,
     colspan = 1,
     rowspan = 1,
-    ignoreHistoryAndEvents = false,
-    reMarging = false // When unmerging cells, if we detect any merged cells inside it, we need to remerge that portion.
+    ignoreHistoryAndEvents,
+    reMarging = false, // When unmerging cells, if we detect any merged cells inside it, we need to remerge that portion.
+    mergeMode = 'top-left',
 }) {
     const obj = this;
+
+    console.log({mergeMode})
 
     if(colspan === 1 && rowspan === 1) {
         // TODO: SA_ERROR + return
@@ -278,11 +276,6 @@ export const SA_setMerge = function ({
     }
 }
 
-/**
- * Merge cells
- * @param {cellName, colspan, rowspan, ignoreHistoryAndEvents, reMarging} 
- **/
-
 export const SA_removeMerge = function({
     cellName,
     keepOptions = false,
@@ -360,21 +353,193 @@ export const SA_removeMerge = function({
     }
 }
 
+// TODO: Replace these type of alerts: alert(jSuites.translate(test));
+// TODO: SA_PROMPT (message, actions[]) -> action 
+// TODO: SA_ERROR (message) -> void
+
+export const mergeActiveCells = function () {
+    // TODO: ADD PROMPT HERE
+    // const mergeType = await SA_Prompt("What type of merge you need?", [{message: "top-left"}, {message: "joined"}, {message: "cancel"}])
+
+    const worksheet = getWorksheetInstance.call(this);
+
+    const selectedCells = worksheet.selectedContainer;
+    if (selectedCells?.length !== 4) {
+        throw new Error('Invalid selected cells');
+    }
+
+    const [topLeftY, topLeftX, bottomRightY, bottomRightX] = selectedCells;
+
+    let cellName = getCellNameFromCoords(topLeftY, topLeftX); // Like: B22, C1, B5
+    
+    let colspan = bottomRightY - topLeftY + 1;
+    let rowspan = bottomRightX - topLeftX + 1;
+
+    if (colspan !== 1 || rowspan !== 1) {
+        worksheet.SA_setMerge({
+            cellName,
+            rowspan,
+            colspan,
+        })
+    }
+}
+
+/**
+ * Merge cells
+ * @param cellName
+ * @param colspan
+ * @param rowspan
+ * @param ignoreHistoryAndEvents
+ */
+export const setMerge = function(cellName, colspan, rowspan, ignoreHistoryAndEvents) {
+    const obj = this;
+    let test = false;
+
+    if (! cellName) {
+        if (! obj.highlighted.length) {
+            alert(jSuites.translate('No cells selected'));
+            return null;
+        } else {
+            const x1 = parseInt(obj.highlighted[0].getAttribute('data-x'));
+            const y1 = parseInt(obj.highlighted[0].getAttribute('data-y'));
+            const x2 = parseInt(obj.highlighted[obj.highlighted.length-1].getAttribute('data-x'));
+            const y2 = parseInt(obj.highlighted[obj.highlighted.length-1].getAttribute('data-y'));
+            cellName = getColumnNameFromId([ x1, y1 ]);
+            colspan = (x2 - x1) + 1;
+            rowspan = (y2 - y1) + 1;
+        }
+    } else if (typeof cellName !== 'string') {
+        return null
+    }
+
+    const cell = getIdFromColumnName(cellName, true);
+
+    if (obj.options.mergeCells && obj.options.mergeCells[cellName]) {
+        if (obj.records[cell[1]][cell[0]].element.getAttribute('data-merged')) {
+            test = 'Cell already merged';
+        }
+    } else if ((! colspan || colspan < 2) && (! rowspan || rowspan < 2)) {
+        test = 'Invalid merged properties';
+    } else {
+        var cells = [];
+        for (let j = cell[1]; j < cell[1] + rowspan; j++) {
+            for (let i = cell[0]; i < cell[0] + colspan; i++) {
+                var columnName = getColumnNameFromId([i, j]);
+                if (obj.records[j][i].element.getAttribute('data-merged')) {
+                    test = 'There is a conflict with another merged cell';
+                }
+            }
+        }
+    }
+
+    if (test) {
+        alert(jSuites.translate(test));
+    } else {
+        // Add property
+        if (colspan > 1) {
+            obj.records[cell[1]][cell[0]].element.setAttribute('colspan', colspan);
+        } else {
+            colspan = 1;
+        }
+        if (rowspan > 1) {
+            obj.records[cell[1]][cell[0]].element.setAttribute('rowspan', rowspan);
+        } else {
+            rowspan = 1;
+        }
+        // Keep links to the existing nodes
+        if (!obj.options.mergeCells) {
+            obj.options.mergeCells = {};
+        }
+
+        obj.options.mergeCells[cellName] = [ colspan, rowspan, [] ];
+        // Mark cell as merged
+        obj.records[cell[1]][cell[0]].element.setAttribute('data-merged', 'true');
+        // Overflow
+        obj.records[cell[1]][cell[0]].element.style.overflow = 'hidden';
+        // History data
+        const data = [];
+        // Adjust the nodes
+        for (let y = cell[1]; y < cell[1] + rowspan; y++) {
+            for (let x = cell[0]; x < cell[0] + colspan; x++) {
+                if (! (cell[0] == x && cell[1] == y)) {
+                    data.push(obj.options.data[y][x]);
+                    updateCell.call(obj, x, y, '', true);
+                    obj.options.mergeCells[cellName][2].push(obj.records[y][x].element);
+                    obj.records[y][x].element.style.display = 'none';
+                    obj.records[y][x].element = obj.records[cell[1]][cell[0]].element;
+                }
+            }
+        }
+        // In the initialization is not necessary keep the history
+        updateSelection.call(obj, obj.records[cell[1]][cell[0]].element);
+
+        if (! ignoreHistoryAndEvents) {
+            setHistory.call(obj, {
+                action:'setMerge',
+                column:cellName,
+                colspan:colspan,
+                rowspan:rowspan,
+                data:data,
+            });
+
+            dispatch.call(obj, 'onmerge', obj, { [cellName]: [colspan, rowspan]});
+        }
+    }
+}
+
+
+/**
+ * Remove merge by cellname
+ * @param cellName
+ */
+export const removeMerge = function(cellName, data, keepOptions) {
+    const obj = this;
+
+    if (obj.options.mergeCells && obj.options.mergeCells[cellName]) {
+        const cell = getIdFromColumnName(cellName, true); // [y, x]
+        obj.records[cell[1]][cell[0]].element.removeAttribute('colspan');
+        obj.records[cell[1]][cell[0]].element.removeAttribute('rowspan');
+        obj.records[cell[1]][cell[0]].element.removeAttribute('data-merged');
+        const info = obj.options.mergeCells[cellName];
+
+        let index = 0;
+        let j, i;
+
+        for (j = 0; j < info[1]; j++) {
+            for (i = 0; i < info[0]; i++) {
+                if (j > 0 || i > 0) {
+                    obj.records[cell[1]+j][cell[0]+i].element = info[2][index];
+                    obj.records[cell[1]+j][cell[0]+i].element.style.display = '';
+                    // Recover data
+                    if (data && data[index]) {
+                        updateCell.call(obj, cell[0]+i, cell[1]+j, data[index]);
+                    }
+                    index++;
+                }
+            }
+        }
+
+        // Update selection
+        updateSelection.call(obj, obj.records[cell[1]][cell[0]].element, obj.records[cell[1]+j-1][cell[0]+i-1].element);
+
+        if (! keepOptions) {
+            delete(obj.options.mergeCells[cellName]);
+        }
+    }
+}
+
 /**
  * Remove all merged cells
  */
-export const destroyMerge = function(keepOptions = false) {
+export const destroyMerge = function(keepOptions) {
     const obj = this;
 
     // Remove any merged cells
     if (obj.options.mergeCells) {
+        var mergedCells = obj.options.mergeCells;
         const keys = Object.keys(obj.options.mergeCells);
         for (let i = 0; i < keys.length; i++) {
-            SA_removeMerge.call(obj, {
-                cellName: keys[i],
-                ignoreHistoryAndEvents: true,
-                keepOptions: !!keepOptions
-            })
+            removeMerge.call(obj, keys[i], null, keepOptions);
         }
     }
 }

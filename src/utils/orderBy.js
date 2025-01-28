@@ -4,6 +4,7 @@ import dispatch from './dispatch.js';
 import { updateTableReferences } from './internal.js';
 import { loadPage } from './lazyLoading.js';
 import { closeFilter } from './filter.js';
+import { SA_PROMPT } from './sa_functions.js'
 
 /**
  * Update order arrow
@@ -91,13 +92,33 @@ export const orderBy = function(column, order) {
     if (column >= 0) {
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
-            if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                return false;
-            } else {
-                // Remove merged cells
-                obj.destroyMerge();
-            }
+            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                {
+                    text: 'Yes',
+                    type: 'danger',
+                    onclick: () => {
+                        // Remove merged cells
+                        obj.destroyMerge();
+                        // Continue with sorting
+                        continueSorting();
+                    }
+                },
+                {
+                    text: 'No',
+                    type: 'primary',
+                    onclick: () => {
+                        // Do nothing
+                    }
+                }
+            ])
+            // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+            //     return false;
+            // } else {
+            //     // Remove merged cells
+            //     obj.destroyMerge();
+            // }
         }
+        const continueSorting = () => {
 
         // Direction
         if (order == null) {
@@ -180,5 +201,6 @@ export const orderBy = function(column, order) {
         dispatch.call(obj, 'onsort', obj, column, order, newValue.map((row) => row));
 
         return true;
+        }
     }
 }

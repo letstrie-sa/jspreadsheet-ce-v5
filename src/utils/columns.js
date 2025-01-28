@@ -7,6 +7,7 @@ import { createCell, updateTableReferences } from './internal.js';
 import { conditionalSelectionUpdate, updateCornerPosition } from './selection.js';
 import { setFooter } from './footer.js';
 import { getColumnNameFromId, injectArray } from './internalHelpers.js';
+import { SA_PROMPT } from './sa_functions.js'
 
 export const getNumberOfColumns = function() {
     const obj = this;
@@ -161,15 +162,30 @@ export const insertColumn = function(mixed, columnNumber, insertBefore, properti
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
             if (isColMerged.call(obj, columnNumber, insertBefore).length) {
-                if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                    return false;
-                } else {
-                    obj.destroyMerge();
-                }
+                SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                    {
+                        text: 'Yes',
+                        onclick: () => {
+                            obj.destroyMerge();
+                            processInsertColumn();
+                        },
+                        type: 'danger',
+                    },
+                    {
+                        text: 'No',
+                        type: 'primary',
+                    },
+                ])
+                // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+                //     return false;
+                // } else {
+                //     obj.destroyMerge();
+                // }
             }
         }
 
-        // Insert before
+        const processInsertColumn = () => {
+                    // Insert before
         const columnIndex = (! insertBefore) ? columnNumber + 1 : columnNumber;
         obj.options.columns = injectArray(obj.options.columns, columnIndex, properties);
 
@@ -303,6 +319,7 @@ export const insertColumn = function(mixed, columnNumber, insertBefore, properti
 
         // Events
         dispatch.call(obj, 'oninsertcolumn', obj, columns);
+        }
     }
 }
 
@@ -323,74 +340,116 @@ export const moveColumn = function(o, d) {
         }
 
         if (isColMerged.call(obj, o).length || isColMerged.call(obj, d, insertBefore).length) {
-            if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                return false;
+            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                {
+                    text: 'Yes',
+                    type: 'danger',
+                    onclick: () => {
+                        obj.destroyMerge();
+                        processMoveColumn()
+                    },
+                }, {
+                    text: 'No',
+                    type: 'primary',
+                }
+            ])
+            // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+            //     return false;
+            // } else {
+            //     obj.destroyMerge();
+            // }
+        }
+    }
+
+    const processMoveColumn = () => {
+            o = parseInt(o)
+            d = parseInt(d)
+
+            if (o > d) {
+              obj.headerContainer.insertBefore(obj.headers[o], obj.headers[d])
+              obj.colgroupContainer.insertBefore(
+                obj.cols[o].colElement,
+                obj.cols[d].colElement
+              )
+
+              for (let j = 0; j < obj.rows.length; j++) {
+                obj.rows[j].element.insertBefore(
+                  obj.records[j][o].element,
+                  obj.records[j][d].element
+                )
+              }
             } else {
-                obj.destroyMerge();
+              obj.headerContainer.insertBefore(
+                obj.headers[o],
+                obj.headers[d].nextSibling
+              )
+              obj.colgroupContainer.insertBefore(
+                obj.cols[o].colElement,
+                obj.cols[d].colElement.nextSibling
+              )
+
+              for (let j = 0; j < obj.rows.length; j++) {
+                obj.rows[j].element.insertBefore(
+                  obj.records[j][o].element,
+                  obj.records[j][d].element.nextSibling
+                )
+              }
             }
-        }
+
+            obj.options.columns.splice(
+              d,
+              0,
+              obj.options.columns.splice(o, 1)[0]
+            )
+            obj.headers.splice(d, 0, obj.headers.splice(o, 1)[0])
+            obj.cols.splice(d, 0, obj.cols.splice(o, 1)[0])
+
+            const firstAffectedIndex = Math.min(o, d)
+            const lastAffectedIndex = Math.max(o, d)
+
+            for (let j = 0; j < obj.rows.length; j++) {
+              obj.options.data[j].splice(
+                d,
+                0,
+                obj.options.data[j].splice(o, 1)[0]
+              )
+              obj.records[j].splice(d, 0, obj.records[j].splice(o, 1)[0])
+            }
+
+            for (let i = firstAffectedIndex; i <= lastAffectedIndex; i++) {
+              obj.cols[i].x = i
+            }
+
+            for (let j = 0; j < obj.records.length; j++) {
+              for (let i = firstAffectedIndex; i <= lastAffectedIndex; i++) {
+                obj.records[j][i].x = i
+              }
+            }
+
+            // Update footers position
+            if (obj.options.footers) {
+              for (let j = 0; j < obj.options.footers.length; j++) {
+                obj.options.footers[j].splice(
+                  d,
+                  0,
+                  obj.options.footers[j].splice(o, 1)[0]
+                )
+              }
+            }
+
+            // Keeping history of changes
+            setHistory.call(obj, {
+              action: 'moveColumn',
+              oldValue: o,
+              newValue: d,
+            })
+
+            // Update table references
+            updateTableReferences.call(obj)
+
+            // Events
+            dispatch.call(obj, 'onmovecolumn', obj, o, d, 1)
     }
-
-    o = parseInt(o);
-    d = parseInt(d);
-
-    if (o > d) {
-        obj.headerContainer.insertBefore(obj.headers[o], obj.headers[d]);
-        obj.colgroupContainer.insertBefore(obj.cols[o].colElement, obj.cols[d].colElement);
-
-        for (let j = 0; j < obj.rows.length; j++) {
-            obj.rows[j].element.insertBefore(obj.records[j][o].element, obj.records[j][d].element);
-        }
-    } else {
-        obj.headerContainer.insertBefore(obj.headers[o], obj.headers[d].nextSibling);
-        obj.colgroupContainer.insertBefore(obj.cols[o].colElement, obj.cols[d].colElement.nextSibling);
-
-        for (let j = 0; j < obj.rows.length; j++) {
-            obj.rows[j].element.insertBefore(obj.records[j][o].element, obj.records[j][d].element.nextSibling);
-        }
-    }
-
-    obj.options.columns.splice(d, 0, obj.options.columns.splice(o, 1)[0]);
-    obj.headers.splice(d, 0, obj.headers.splice(o, 1)[0]);
-    obj.cols.splice(d, 0, obj.cols.splice(o, 1)[0]);
-
-    const firstAffectedIndex = Math.min(o, d);
-    const lastAffectedIndex = Math.max(o, d);
-
-    for (let j = 0; j < obj.rows.length; j++) {
-        obj.options.data[j].splice(d, 0, obj.options.data[j].splice(o, 1)[0]);
-        obj.records[j].splice(d, 0, obj.records[j].splice(o, 1)[0]);
-    }
-
-    for (let i = firstAffectedIndex; i <= lastAffectedIndex; i++) {
-        obj.cols[i].x = i;
-    }
-
-    for (let j = 0; j < obj.records.length; j++) {
-        for (let i = firstAffectedIndex; i <= lastAffectedIndex; i++) {
-            obj.records[j][i].x = i;
-        }
-    }
-
-    // Update footers position
-    if (obj.options.footers) {
-        for (let j = 0; j < obj.options.footers.length; j++) {
-            obj.options.footers[j].splice(d, 0, obj.options.footers[j].splice(o, 1)[0]);
-        }
-    }
-
-    // Keeping history of changes
-    setHistory.call(obj, {
-        action:'moveColumn',
-        oldValue: o,
-        newValue: d,
-    });
-
-    // Update table references
-    updateTableReferences.call(obj);
-
-    // Events
-    dispatch.call(obj, 'onmovecolumn', obj, o, d, 1);
 }
 
 /**
@@ -403,69 +462,7 @@ export const moveColumn = function(o, d) {
 export const deleteColumn = function(columnNumber, numOfColumns) {
     const obj = this;
 
-    // Global Configuration
-    if (obj.options.allowDeleteColumn != false) {
-        if (obj.headers.length > 1) {
-            // Delete column definitions
-            if (columnNumber == undefined) {
-                const number = obj.getSelectedColumns(true);
-
-                if (! number.length) {
-                    // Remove last column
-                    columnNumber = obj.headers.length - 1;
-                    numOfColumns = 1;
-                } else {
-                    // Remove selected
-                    columnNumber = parseInt(number[0]);
-                    numOfColumns = parseInt(number.length);
-                }
-            }
-
-            // Lasat column
-            const lastColumn = obj.options.data[0].length - 1;
-
-            if (columnNumber == undefined || columnNumber > lastColumn || columnNumber < 0) {
-                columnNumber = lastColumn;
-            }
-
-            // Minimum of columns to be delete is 1
-            if (! numOfColumns) {
-                numOfColumns = 1;
-            }
-
-            // Can't delete more than the limit of the table
-            if (numOfColumns > obj.options.data[0].length - columnNumber) {
-                numOfColumns = obj.options.data[0].length - columnNumber;
-            }
-
-            const removedColumns = [];
-            for (let i = 0; i < numOfColumns; i++) {
-                removedColumns.push(i + columnNumber);
-            }
-
-            // onbeforedeletecolumn
-           if (dispatch.call(obj, 'onbeforedeletecolumn', obj, removedColumns) === false) {
-              return false;
-           }
-
-            // Can't remove the last column
-            if (parseInt(columnNumber) > -1) {
-                // Merged cells
-                let mergeExists = false;
-                if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
-                    for (let col = columnNumber; col < columnNumber + numOfColumns; col++) {
-                        if (isColMerged.call(obj, col, null).length) {
-                            mergeExists = true;
-                        }
-                    }
-                }
-                if (mergeExists) {
-                    if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                        return false;
-                    } else {
-                        obj.destroyMerge();
-                    }
-                }
+    const processDeleteColumn = () => {
 
                 // Delete the column properties
                 const columns = obj.options.columns ? obj.options.columns.splice(columnNumber, numOfColumns) : undefined;
@@ -550,6 +547,90 @@ export const deleteColumn = function(columnNumber, numOfColumns) {
 
                 // Delete
                 dispatch.call(obj, 'ondeletecolumn', obj, removedColumns);
+            
+    }
+
+    // Global Configuration
+    if (obj.options.allowDeleteColumn != false) {
+        if (obj.headers.length > 1) {
+            // Delete column definitions
+            if (columnNumber == undefined) {
+                const number = obj.getSelectedColumns(true);
+
+                if (! number.length) {
+                    // Remove last column
+                    columnNumber = obj.headers.length - 1;
+                    numOfColumns = 1;
+                } else {
+                    // Remove selected
+                    columnNumber = parseInt(number[0]);
+                    numOfColumns = parseInt(number.length);
+                }
+            }
+
+            // Lasat column
+            const lastColumn = obj.options.data[0].length - 1;
+
+            if (columnNumber == undefined || columnNumber > lastColumn || columnNumber < 0) {
+                columnNumber = lastColumn;
+            }
+
+            // Minimum of columns to be delete is 1
+            if (! numOfColumns) {
+                numOfColumns = 1;
+            }
+
+            // Can't delete more than the limit of the table
+            if (numOfColumns > obj.options.data[0].length - columnNumber) {
+                numOfColumns = obj.options.data[0].length - columnNumber;
+            }
+
+            const removedColumns = [];
+            for (let i = 0; i < numOfColumns; i++) {
+                removedColumns.push(i + columnNumber);
+            }
+
+            // onbeforedeletecolumn
+           if (dispatch.call(obj, 'onbeforedeletecolumn', obj, removedColumns) === false) {
+              return false;
+           }
+
+            // Can't remove the last column
+            if (parseInt(columnNumber) > -1) {
+                // Merged cells
+                let mergeExists = false;
+                if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
+                    for (let col = columnNumber; col < columnNumber + numOfColumns; col++) {
+                        if (isColMerged.call(obj, col, null).length) {
+                            mergeExists = true;
+                        }
+                    }
+                }
+                if (mergeExists) {
+                    SA_PROMPT(
+                      'This action will destroy any existing merged cells. Are you sure?',
+                      [
+                        {
+                          text: 'Yes',
+                          type: 'danger',
+                          onclick: () => {
+                            obj.destroyMerge()
+                            processDeleteColumn()
+                          },
+                        },
+                        {
+                          text: 'No',
+                          type: 'primary',
+                        },
+                      ]
+                    )
+                    // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+                    //     return false;
+                    // } else {
+                    //     obj.destroyMerge();
+                    // }
+                }
+                
             }
         } else {
             console.error('Jspreadsheet: It is not possible to delete the last column');

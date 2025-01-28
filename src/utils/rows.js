@@ -6,6 +6,7 @@ import { isRowMerged } from "./merges.js";
 import { conditionalSelectionUpdate, getSelectedRows, updateCornerPosition } from "./selection.js";
 import { setHistory } from "./history.js";
 import { getColumnNameFromId } from "./internalHelpers.js";
+import { SA_PROMPT } from "./sa_functions.js"
 
 /**
  * Create row
@@ -151,100 +152,155 @@ export const insertRow = function(mixed, rowNumber, insertBefore) {
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
             if (isRowMerged.call(obj, rowNumber, insertBefore).length) {
-                if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                    return false;
+                SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                    {
+                        text: 'Yes',
+                        type: 'danger',
+                        onclick: () => {
+                            obj.destroyMerge();
+                            processInsertRow();
+                        }
+                    }, {
+                        text: 'No',
+                        type: 'primary',
+                        onclick: () => {}
+                    }
+                ])
+                // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+                //     return false;
+                // } else {
+                //     obj.destroyMerge();
+                // }
+            }
+        }
+
+        const processInsertRow = () => {
+          // Clear any search
+          if (obj.options.search == true) {
+              if (obj.results && obj.results.length != obj.rows.length) {
+                  SA_PROMPT('This action will clear your search results. Are you sure?', [
+                    {
+                        text: 'Yes',
+                        type: 'danger',
+                        onclick: () => {
+                            obj.resetSearch();
+                            postResetSearch()
+                            return true
+                        }
+                    }, {
+                        text: 'No',
+                        type: 'primary',
+                          onclick: () => {
+                            return false
+                        }
+                    }
+                ])
+            //   if (
+            //     confirm(
+            //       jSuites.translate(
+            //         'This action will clear your search results. Are you sure?'
+            //       )
+            //     )
+            //   ) {
+            //     obj.resetSearch()
+            //   } else {
+            //     return false
+            //   }
+            }
+
+              obj.results = null
+              postResetSearch()
+          }
+
+            const postResetSearch = () => {
+              // Insertbefore
+              const rowIndex = !insertBefore ? rowNumber + 1 : rowNumber
+
+              // Keep the current data
+              const currentRecords = obj.records.splice(rowIndex)
+              const currentData = obj.options.data.splice(rowIndex)
+              const currentRows = obj.rows.splice(rowIndex)
+
+              // Adding lines
+              const rowRecords = []
+              const rowData = []
+              const rowNode = []
+
+              for (let row = rowIndex; row < numOfRows + rowIndex; row++) {
+                // Push data to the data container
+                obj.options.data[row] = []
+                for (let col = 0; col < obj.options.columns.length; col++) {
+                  obj.options.data[row][col] = data[col] ? data[col] : ''
+                }
+                // Create row
+                const newRow = createRow.call(obj, row, obj.options.data[row])
+                // Append node
+                if (currentRows[0]) {
+                  if (
+                    Array.prototype.indexOf.call(
+                      obj.tbody.children,
+                      currentRows[0].element
+                    ) >= 0
+                  ) {
+                    obj.tbody.insertBefore(
+                      newRow.element,
+                      currentRows[0].element
+                    )
+                  }
                 } else {
-                    obj.destroyMerge();
+                  if (
+                    Array.prototype.indexOf.call(
+                      obj.tbody.children,
+                      obj.rows[rowNumber].element
+                    ) >= 0
+                  ) {
+                    obj.tbody.appendChild(newRow.element)
+                  }
                 }
-            }
-        }
+                // Record History
+                rowRecords.push(obj.records[row])
+                rowData.push(obj.options.data[row])
+                rowNode.push(newRow)
+              }
 
-        // Clear any search
-        if (obj.options.search == true) {
-            if (obj.results && obj.results.length != obj.rows.length) {
-                if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
-                    obj.resetSearch();
-                } else {
-                    return false;
+              // Copy the data back to the main data
+              Array.prototype.push.apply(obj.records, currentRecords)
+              Array.prototype.push.apply(obj.options.data, currentData)
+              Array.prototype.push.apply(obj.rows, currentRows)
+
+              for (let j = rowIndex; j < obj.rows.length; j++) {
+                obj.rows[j].y = j
+              }
+
+              for (let j = rowIndex; j < obj.records.length; j++) {
+                for (let i = 0; i < obj.records[j].length; i++) {
+                  obj.records[j][i].y = j
                 }
-            }
+              }
 
-            obj.results = null;
-        }
+              // Respect pagination
+              if (obj.options.pagination > 0) {
+                obj.page(obj.pageNumber)
+              }
 
-        // Insertbefore
-        const rowIndex = (! insertBefore) ? rowNumber + 1 : rowNumber;
+              // Keep history
+              setHistory.call(obj, {
+                action: 'insertRow',
+                rowNumber: rowNumber,
+                numOfRows: numOfRows,
+                insertBefore: insertBefore,
+                rowRecords: rowRecords,
+                rowData: rowData,
+                rowNode: rowNode,
+              })
 
-        // Keep the current data
-        const currentRecords = obj.records.splice(rowIndex);
-        const currentData = obj.options.data.splice(rowIndex);
-        const currentRows = obj.rows.splice(rowIndex);
+              // Remove table references
+              updateTableReferences.call(obj)
 
-        // Adding lines
-        const rowRecords = [];
-        const rowData = [];
-        const rowNode = [];
-
-        for (let row = rowIndex; row < (numOfRows + rowIndex); row++) {
-            // Push data to the data container
-            obj.options.data[row] = [];
-            for (let col = 0; col < obj.options.columns.length; col++) {
-                obj.options.data[row][col]  = data[col] ? data[col] : '';
-            }
-            // Create row
-            const newRow = createRow.call(obj, row, obj.options.data[row]);
-            // Append node
-            if (currentRows[0]) {
-                if (Array.prototype.indexOf.call(obj.tbody.children, currentRows[0].element) >= 0) {
-                    obj.tbody.insertBefore(newRow.element, currentRows[0].element);
-                }
-            } else {
-                if (Array.prototype.indexOf.call(obj.tbody.children, obj.rows[rowNumber].element) >= 0) {
-                    obj.tbody.appendChild(newRow.element);
-                }
-            }
-            // Record History
-            rowRecords.push(obj.records[row]);
-            rowData.push(obj.options.data[row]);
-            rowNode.push(newRow);
-        }
-
-        // Copy the data back to the main data
-        Array.prototype.push.apply(obj.records, currentRecords);
-        Array.prototype.push.apply(obj.options.data, currentData);
-        Array.prototype.push.apply(obj.rows, currentRows);
-
-        for (let j = rowIndex; j < obj.rows.length; j++) {
-            obj.rows[j].y = j;
-        }
-
-        for (let j = rowIndex; j < obj.records.length; j++) {
-            for (let i = 0; i < obj.records[j].length; i++) {
-                obj.records[j][i].y = j;
+              // Events
+              dispatch.call(obj, 'oninsertrow', obj, onbeforeinsertrowRecords)
             }
         }
-
-        // Respect pagination
-        if (obj.options.pagination > 0) {
-            obj.page(obj.pageNumber);
-        }
-
-        // Keep history
-        setHistory.call(obj, {
-            action: 'insertRow',
-            rowNumber: rowNumber,
-            numOfRows: numOfRows,
-            insertBefore: insertBefore,
-            rowRecords: rowRecords,
-            rowData: rowData,
-            rowNode: rowNode,
-        });
-
-        // Remove table references
-        updateTableReferences.call(obj);
-
-        // Events
-        dispatch.call(obj, 'oninsertrow', obj, onbeforeinsertrowRecords);
     }
 }
 
@@ -266,73 +322,129 @@ export const moveRow = function(o, d, ignoreDom) {
         }
 
         if (isRowMerged.call(obj, o).length || isRowMerged.call(obj, d, insertBefore).length) {
-            if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                return false;
-            } else {
-                obj.destroyMerge();
+            // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+            //     return false;
+            // } else {
+            //     obj.destroyMerge();
+            // }
+
+            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                {
+                    text: 'Yes',
+                    type: 'danger',
+                    onclick: () => {
+                        obj.destroyMerge();
+                        resetSearch()
+                    }
+                }, {
+                    text: 'No',
+                    type: 'primary',
+                    onclick: () => {}
+                }
+            ])
+        }
+    }
+
+    const resetSearch = () => {
+        if (obj.options.search == true) {
+            if (obj.results && obj.results.length != obj.rows.length) {
+            // if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
+            //     obj.resetSearch();
+            // } else {
+            //     return false;
+            // }
+
+            SA_PROMPT(
+                'This action will clear your search results. Are you sure?',
+                [
+                {
+                    text: 'Yes',
+                    type: 'danger',
+                    onclick: () => {
+                        obj.resetSearch()
+                        processMoveRow()
+                        return true
+                    },
+                },
+                {
+                    text: 'No',
+                    type: 'primary',
+                    onclick: () => {
+                        return false
+                    },
+                },
+                ]
+            )
             }
+
+            obj.results = null
+            processMoveRow()
         }
     }
 
-    if (obj.options.search == true) {
-        if (obj.results && obj.results.length != obj.rows.length) {
-            if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
-                obj.resetSearch();
-            } else {
-                return false;
-            }
-        }
+    const processMoveRow = () => {
+           if (!ignoreDom) {
+             if (
+               Array.prototype.indexOf.call(
+                 obj.tbody.children,
+                 obj.rows[d].element
+               ) >= 0
+             ) {
+               if (o > d) {
+                 obj.tbody.insertBefore(
+                   obj.rows[o].element,
+                   obj.rows[d].element
+                 )
+               } else {
+                 obj.tbody.insertBefore(
+                   obj.rows[o].element,
+                   obj.rows[d].element.nextSibling
+                 )
+               }
+             } else {
+               obj.tbody.removeChild(obj.rows[o].element)
+             }
+           }
 
-        obj.results = null;
+           // Place references in the correct position
+           obj.rows.splice(d, 0, obj.rows.splice(o, 1)[0])
+           obj.records.splice(d, 0, obj.records.splice(o, 1)[0])
+           obj.options.data.splice(d, 0, obj.options.data.splice(o, 1)[0])
+
+           const firstAffectedIndex = Math.min(o, d)
+           const lastAffectedIndex = Math.max(o, d)
+
+           for (let j = firstAffectedIndex; j <= lastAffectedIndex; j++) {
+             obj.rows[j].y = j
+           }
+
+           for (let j = firstAffectedIndex; j <= lastAffectedIndex; j++) {
+             for (let i = 0; i < obj.records[j].length; i++) {
+               obj.records[j][i].y = j
+             }
+           }
+
+           // Respect pagination
+           if (
+             obj.options.pagination > 0 &&
+             obj.tbody.children.length != obj.options.pagination
+           ) {
+             obj.page(obj.pageNumber)
+           }
+
+           // Keeping history of changes
+           setHistory.call(obj, {
+             action: 'moveRow',
+             oldValue: o,
+             newValue: d,
+           })
+
+           // Update table references
+           updateTableReferences.call(obj)
+
+           // Events
+           dispatch.call(obj, 'onmoverow', obj, parseInt(o), parseInt(d), 1)
     }
-
-    if (! ignoreDom) {
-        if (Array.prototype.indexOf.call(obj.tbody.children, obj.rows[d].element) >= 0) {
-            if (o > d) {
-                obj.tbody.insertBefore(obj.rows[o].element, obj.rows[d].element);
-            } else {
-                obj.tbody.insertBefore(obj.rows[o].element, obj.rows[d].element.nextSibling);
-            }
-        } else {
-            obj.tbody.removeChild(obj.rows[o].element);
-        }
-    }
-
-    // Place references in the correct position
-    obj.rows.splice(d, 0, obj.rows.splice(o, 1)[0]);
-    obj.records.splice(d, 0, obj.records.splice(o, 1)[0]);
-    obj.options.data.splice(d, 0, obj.options.data.splice(o, 1)[0]);
-
-    const firstAffectedIndex = Math.min(o, d);
-    const lastAffectedIndex = Math.max(o, d);
-
-    for (let j = firstAffectedIndex; j <= lastAffectedIndex; j++) {
-        obj.rows[j].y = j;
-    }
-
-    for (let j = firstAffectedIndex; j <= lastAffectedIndex; j++) {
-        for (let i = 0; i < obj.records[j].length; i++) {
-            obj.records[j][i].y = j;
-        }
-    }
-
-    // Respect pagination
-    if (obj.options.pagination > 0 && obj.tbody.children.length != obj.options.pagination) {
-        obj.page(obj.pageNumber);
-    }
-
-    // Keeping history of changes
-    setHistory.call(obj, {
-        action:'moveRow',
-        oldValue: o,
-        newValue: d,
-    });
-
-    // Update table references
-    updateTableReferences.call(obj);
-
-    // Events
-    dispatch.call(obj, 'onmoverow', obj, parseInt(o), parseInt(d), 1);
 }
 
 /**
@@ -398,79 +510,149 @@ export const deleteRow = function(rowNumber, numOfRows) {
                     }
                 }
                 if (mergeExists) {
-                    if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                        return false;
-                    } else {
-                        obj.destroyMerge();
-                    }
-                }
-
-                // Clear any search
-                if (obj.options.search == true) {
-                    if (obj.results && obj.results.length != obj.rows.length) {
-                        if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
-                            obj.resetSearch();
-                        } else {
-                            return false;
+                    // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
+                    //     return false;
+                    // } else {
+                    //     obj.destroyMerge();
+                    // }
+                    SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
+                        {
+                            text: 'Yes',
+                            type: 'danger',
+                            onclick: () => {
+                                obj.destroyMerge();
+                                processResetSearch()
+                            }
+                        }, {
+                            text: 'No',
+                            type: 'primary',
+                            onclick: () => {}
                         }
+                    ])
+                }
+
+                const processResetSearch = () => {
+                  // Clear any search
+                  if (obj.options.search == true) {
+                    if (obj.results && obj.results.length != obj.rows.length) {
+                      // if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
+                      //     obj.resetSearch();
+                      // } else {
+                      //     return false;
+                      // }
+
+                      SA_PROMPT(
+                        'This action will clear your search results. Are you sure?',
+                        [
+                          {
+                            text: 'Yes',
+                            type: 'danger',
+                            onclick: () => {
+                              obj.resetSearch()
+                              processDeleteRow()
+                              return true
+                            },
+                          },
+                          {
+                            text: 'No',
+                            type: 'primary',
+                            onclick: () => {
+                              return false
+                            },
+                          },
+                        ]
+                      )
                     }
 
-                    obj.results = null;
+                    obj.results = null
+                    processDeleteRow()
+                  }
                 }
 
-                // If delete all rows, and set allowDeletingAllRows false, will stay one row
-                if (obj.options.allowDeletingAllRows != true && lastRow + 1 === numOfRows) {
-                    numOfRows--;
-                    console.error('Jspreadsheet: It is not possible to delete the last row');
-                }
+                const processDeleteRow = () => {
+                  // If delete all rows, and set allowDeletingAllRows false, will stay one row
+                  if (
+                    obj.options.allowDeletingAllRows != true &&
+                    lastRow + 1 === numOfRows
+                  ) {
+                    numOfRows--
+                    console.error(
+                      'Jspreadsheet: It is not possible to delete the last row'
+                    )
+                  }
 
-                // Remove node
-                for (let row = rowNumber; row < rowNumber + numOfRows; row++) {
-                    if (Array.prototype.indexOf.call(obj.tbody.children, obj.rows[row].element) >= 0) {
-                        obj.rows[row].element.className = '';
-                        obj.rows[row].element.parentNode.removeChild(obj.rows[row].element);
+                  // Remove node
+                  for (
+                    let row = rowNumber;
+                    row < rowNumber + numOfRows;
+                    row++
+                  ) {
+                    if (
+                      Array.prototype.indexOf.call(
+                        obj.tbody.children,
+                        obj.rows[row].element
+                      ) >= 0
+                    ) {
+                      obj.rows[row].element.className = ''
+                      obj.rows[row].element.parentNode.removeChild(
+                        obj.rows[row].element
+                      )
                     }
-                }
+                  }
 
-                // Remove data
-                const rowRecords = obj.records.splice(rowNumber, numOfRows);
-                const rowData = obj.options.data.splice(rowNumber, numOfRows);
-                const rowNode = obj.rows.splice(rowNumber, numOfRows);
+                  // Remove data
+                  const rowRecords = obj.records.splice(rowNumber, numOfRows)
+                  const rowData = obj.options.data.splice(rowNumber, numOfRows)
+                  const rowNode = obj.rows.splice(rowNumber, numOfRows)
 
-                for (let j = rowNumber; j < obj.rows.length; j++) {
-                    obj.rows[j].y = j;
-                }
+                  for (let j = rowNumber; j < obj.rows.length; j++) {
+                    obj.rows[j].y = j
+                  }
 
-                for (let j = rowNumber; j < obj.records.length; j++) {
+                  for (let j = rowNumber; j < obj.records.length; j++) {
                     for (let i = 0; i < obj.records[j].length; i++) {
-                        obj.records[j][i].y = j;
+                      obj.records[j][i].y = j
                     }
-                }
+                  }
 
-                // Respect pagination
-                if (obj.options.pagination > 0 && obj.tbody.children.length != obj.options.pagination) {
-                    obj.page(obj.pageNumber);
-                }
+                  // Respect pagination
+                  if (
+                    obj.options.pagination > 0 &&
+                    obj.tbody.children.length != obj.options.pagination
+                  ) {
+                    obj.page(obj.pageNumber)
+                  }
 
-                // Remove selection
-                conditionalSelectionUpdate.call(obj, 1, rowNumber, (rowNumber + numOfRows) - 1);
+                  // Remove selection
+                  conditionalSelectionUpdate.call(
+                    obj,
+                    1,
+                    rowNumber,
+                    rowNumber + numOfRows - 1
+                  )
 
-                // Keep history
-                setHistory.call(obj, {
+                  // Keep history
+                  setHistory.call(obj, {
                     action: 'deleteRow',
                     rowNumber: rowNumber,
                     numOfRows: numOfRows,
                     insertBefore: 1,
                     rowRecords: rowRecords,
                     rowData: rowData,
-                    rowNode: rowNode
-                });
+                    rowNode: rowNode,
+                  })
 
-                // Remove table references
-                updateTableReferences.call(obj);
+                  // Remove table references
+                  updateTableReferences.call(obj)
 
-                // Events
-                dispatch.call(obj, 'ondeleterow', obj, onbeforedeleterowRecords);
+                  // Events
+                  dispatch.call(
+                    obj,
+                    'ondeleterow',
+                    obj,
+                    onbeforedeleterowRecords
+                  )
+                }
             }
         } else {
             console.error('Jspreadsheet: It is not possible to delete the last row');
