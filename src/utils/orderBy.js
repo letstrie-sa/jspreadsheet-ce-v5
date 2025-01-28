@@ -85,6 +85,9 @@ export const updateOrder = function(rows) {
 /**
  * Sort data and reload table
  */
+
+
+
 export const orderBy = function(column, order) {
     const obj = this;
 
@@ -93,14 +96,7 @@ export const orderBy = function(column, order) {
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
             SA_ALERT("Rows or columns with merged cells cannot be ordered.")
             return false;
-            // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-            //     return false;
-            // } else {
-            //     // Remove merged cells
-            //     obj.destroyMerge();
-            // }
         }
-        const continueSorting = () => {
 
         // Direction
         if (order == null) {
@@ -183,6 +179,5 @@ export const orderBy = function(column, order) {
         dispatch.call(obj, 'onsort', obj, column, order, newValue.map((row) => row));
 
         return true;
-        }
     }
 }

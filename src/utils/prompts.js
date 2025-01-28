@@ -28,26 +28,23 @@ export const SA_PROMPT = (message, actions) => {
 };
 
 export const SA_ALERT = (message, type = 'error') => {
-    return new Promise((resolve) => {
-        const body = document.querySelector('body');
-        const modal = document.createElement('div');
-        modal.className = 'sa-alert-modal';
+    const body = document.querySelector('body');
+    const modal = document.createElement('div');
+    modal.className = 'sa-alert-modal';
 
-        modal.innerHTML = `
-            <div class="sa-alert-backdrop"></div>
-            <div class="sa-alert-container">
-                <div class="sa-alert-icon sa-alert-icon-${type}"></div>
-                <p class="sa-alert-message">${message}</p>
-                <button class="sa-alert-action">OK</button>
-            </div>
-        `;
+    modal.innerHTML = `
+        <div class="sa-alert-backdrop"></div>
+        <div class="sa-alert-container sa-${type}-alert">
+            <div class="sa-alert-icon sa-alert-icon-${type}"></div>
+            <p class="sa-alert-message">${message}</p>
+            <button class="sa-alert-action">OK</button>
+        </div>
+    `;
 
-        body.appendChild(modal);
+    body.appendChild(modal);
 
-        modal.querySelector('.sa-alert-action').addEventListener('click', () => {
-            modal.remove();
-            resolve();
-        });
+    modal.querySelector('.sa-alert-action').addEventListener('click', () => {
+        modal.remove();
     });
 };
 
