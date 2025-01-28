@@ -10,9 +10,8 @@ import { openFilter } from './filter.js';
 import { loadDown, loadUp } from './lazyLoading.js';
 import { setWidth } from './columns.js';
 import { moveRow, setHeight } from './rows.js';
-import version from './version.js';
 import { getCellNameFromCoords } from './helpers.js';
-import { SA_PROMPT } from './sa_functions.js'
+import { SA_PROMPT } from './prompts.js';
 
 const getElement = function(element) {
     let jssSection = 0;
@@ -804,7 +803,7 @@ const getRole = function(element) {
 const defaultContextMenu = function(worksheet, x, y, role) {
     const items = [];
 
-    // if (role === 'header') {
+    if (role === 'header') {
         // Insert a new column
         if (worksheet.options.allowInsertColumn != false) {
             items.push({
@@ -866,7 +865,7 @@ const defaultContextMenu = function(worksheet, x, y, role) {
         //         }
         //     });
         // }
-    // }
+    }
 
     if (role === 'row' || role === 'cell') {
         // Insert new row
@@ -897,39 +896,56 @@ const defaultContextMenu = function(worksheet, x, y, role) {
     }
 
     if (role === 'cell') {
-        const selection = this.getSelectedContainer
-
+        const selection = worksheet.selectedContainer
         if (selection.length === 4) {
-          const [startCol, startRow, endCol, endRow] = selection
-          const colName = jspreadsheet.helpers.getColumnName(Number(startCol))
-          const cellName = `${colName}${Number(startRow) + 1}`
-          const mergedCells = instance.getMerge(cellName)
-          let colspan = endCol - startCol + 1
-          let rowspan = endRow - startCol + 1
+          const [topLeftY, topLeftX, bottomRightY, bottomRightX] = selection;
+          let cellName = getCellNameFromCoords(topLeftY, topLeftX); // Like: B22, C1, B5
+          let colspan = bottomRightY - topLeftY + 1;
+          let rowspan = bottomRightX - topLeftX + 1;
 
-          if (mergedCells) {
-            items.push({
-              title: jSuites.translate('Unmerge cells'),
-              onclick: function () {
+          const mergedCells = worksheet.getMerge(cellName);
+
+          items.push({
+            title: jSuites.translate(
+              mergedCells ? "Unmerge cells" : "Merge cells"
+            ),
+            onclick: async function () {
+              if (colspan !== 1 || rowspan !== 1) {
+                const response = await SA_PROMPT(
+                  "Select how you want to merge the selected cells. You can choose to keep only the top-left value, combine all data, or cancel the operation.",
+                  [
+                    {
+                      id: "top-left",
+                      text: "Top-Left",
+                      type: "primary",
+                      onclick: () => console.log("Top-Left Value Selected"),
+                    },
+                    {
+                      id: "combine",
+                      text: "All Data",
+                      type: "secondary",
+                      onclick: () => console.log("All Data Combined"),
+                    },
+                    {
+                      id: "close",
+                      text: "Cancel",
+                      type: "danger",
+                      onclick: () => console.log("Operation Cancelled"),
+                    },
+                  ]
+                );
+
+                if (response.id === "close") return;
+
                 worksheet.SA_setMerge({
                   cellName,
                   rowspan,
                   colspan,
-                })
-              },
-            })
-          } else {
-            items.push({
-              title: jSuites.translate('Merge cells'),
-              onclick: function () {
-                worksheet.SA_setMerge({
-                  cellName,
-                  rowspan,
-                  colspan,
-                })
-              },
-            })
-          }
+                  mergeMode: response.id,
+                });
+              }
+            },
+          });
         }
 
     }
@@ -1236,7 +1252,7 @@ const validLetter = function (text) {
     return text.match(regex) ? 1 : 0;
 }
 
-const keyDownControls = function(e) {
+const keyDownControls = async function(e) {
     if (libraryBase.jspreadsheet.current) {
         if (libraryBase.jspreadsheet.current.edition) {
             if (e.which == 27) {
@@ -1321,69 +1337,65 @@ const keyDownControls = function(e) {
                 last.call(libraryBase.jspreadsheet.current, e.shiftKey, e.ctrlKey);
                 e.preventDefault();
             } else if (e.which == 46 || e.which == 8) {
-                // Delete
-                if (libraryBase.jspreadsheet.current.options.editable != false) {
-                    if (libraryBase.jspreadsheet.current.selectedRow) {
-                        if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
-                            SA_PROMPT(
-                              'Are you sure to delete the selected rows?',
-                              [
-                                {
-                                  text: 'Yes',
-                                  type: 'danger',
-                                  onclick: () => {
-                                    libraryBase.jspreadsheet.current.deleteRow()
-                                  },
-                                },
-                                {
-                                  text: 'No',
-                                  type: 'primary',
-                                  onclick: () => {
-                                    // Do nothing
-                                  },
-                                },
-                              ]
-                            )
-                            // if (confirm(jSuites.translate('Are you sure to delete the selected rows?'))) {
-                            //     libraryBase.jspreadsheet.current.deleteRow();
-                            // }
-                        }
-                    } else if (libraryBase.jspreadsheet.current.selectedHeader) {
-                        if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
-                            SA_PROMPT(
-                              'Are you sure to delete the selected columns?',
-                              [
-                                {
-                                  text: 'Yes',
-                                  type: 'danger',
-                                  onclick: () => {
-                                    libraryBase.jspreadsheet.current.deleteColumn()
-                                  },
-                                },
-                                {
-                                  text: 'No',
-                                  type: 'primary',
-                                  onclick: () => {
-                                    // Do nothing
-                                  },
-                                },
-                              ]
-                            )
-                            
-                            // if (confirm(jSuites.translate('Are you sure to delete the selected columns?'))) {
-                            //     libraryBase.jspreadsheet.current.deleteColumn();
-                            // }
-                        }
-                    } else {
-                        // Change value
-                        libraryBase.jspreadsheet.current.setValue(
-                            libraryBase.jspreadsheet.current.highlighted.map(function(record) {
-                                return record.element;
-                            }),
-                            ''
-                        );
-                    }
-                }
+                // // Delete
+                // if (libraryBase.jspreadsheet.current.options.editable != false) {
+                //     if (libraryBase.jspreadsheet.current.selectedRow) {
+                //         if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
+                //             const response = await SA_PROMPT(
+                //               "Are you sure to delete the selected rows?",
+                //               [
+                //                 {
+                //                   id: "yes",
+                //                   text: "Yes",
+                //                   type: "danger",
+                //                 },
+                //                 {
+                //                   id: "no",
+                //                   text: "No",
+                //                   type: "primary",
+                //                 },
+                //               ]
+                //             );
+
+                //             if(response.id === 'yes') {
+                //                 libraryBase.jspreadsheet.current.deleteRow();
+                //             }
+                //         }
+                //     } else if (libraryBase.jspreadsheet.current.selectedHeader) {
+                //         if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
+                //             const response = await SA_PROMPT(
+                //               "Are you sure to delete the selected columns?",
+                //               [
+                //                 {
+                //                   id: "yes",
+                //                   text: "Yes",
+                //                   type: "danger",
+                //                   onclick: () => {
+                //                     libraryBase.jspreadsheet.current.deleteColumn();
+                //                   },
+                //                 },
+                //                 {
+                //                   id: "no",
+                //                   text: "No",
+                //                   type: "primary",
+                //                 },
+                //               ]
+                //             );
+
+                //             if (response.id === "yes") {
+                //               libraryBase.jspreadsheet.current.deleteColumn();
+                //             }
+                //         }
+                //     } else {
+                //         // Change value
+                //         libraryBase.jspreadsheet.current.setValue(
+                //             libraryBase.jspreadsheet.current.highlighted.map(function(record) {
+                //                 return record.element;
+                //             }),
+                //             ''
+                //         );
+                //     }
+                // }
             } else if (e.which == 13) {
                 // Move cursor
                 if (e.shiftKey) {

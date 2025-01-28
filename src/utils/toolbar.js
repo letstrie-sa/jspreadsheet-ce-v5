@@ -1,7 +1,7 @@
 import jSuites from "jsuites";
 import { getCellNameFromCoords } from "./helpers.js";
 import { getWorksheetInstance } from "./internal.js";
-import { SA_PROMPT } from "./sa_functions.js"
+import { SA_PROMPT } from "./prompts.js"
 
 const setItemStatus = function(toolbarItem, worksheet) {
     if (worksheet.options.editable != false) {
@@ -182,10 +182,7 @@ export const getDefault = function() {
     items.push({
         content: 'web',
         tooltip: jSuites.translate('Merge the selected cells'),
-        onclick: function () {
-            // TODO: ADD PROMPT HERE
-            // const mergeType = await SA_Prompt("What type of merge you need?", [{message: "top-left"}, {message: "joined"}, {message: "cancel"}])
-        
+        onclick: async function () {
             const worksheet = getActive();
         
             const selectedCells = worksheet.selectedContainer;
@@ -201,29 +198,38 @@ export const getDefault = function() {
             let rowspan = bottomRightX - topLeftX + 1;
         
             if (colspan !== 1 || rowspan !== 1) {
-                SA_PROMPT('How do you want to merge this cells?', [
+              const response = await SA_PROMPT(
+                "Select how you want to merge the selected cells. You can choose to keep only the top-left value, combine all data, or cancel the operation.",
+                [
                   {
-                    text: 'Top-Left',
+                    id: "top-left",
+                    text: "Top-Left",
+                    type: "primary",
+                    onclick: () => console.log("Top-Left Value Selected"),
                   },
                   {
-                    text: 'All Data',
+                    id: "combine",
+                    text: "All Data",
+                    type: "secondary",
+                    onclick: () => console.log("All Data Combined"),
                   },
                   {
-                    text: 'Cancel',
-                    type: 'danger',
+                    id: "close",
+                    text: "Cancel",
+                    type: "danger",
+                    onclick: () => console.log("Operation Cancelled"),
                   },
-                ]).then((res) => {
-                  if (res === 'Cancel') {
-                    return
-                  }
-                  worksheet.SA_setMerge({
-                    cellName,
-                    rowspan,
-                    colspan,
-                    mergeMode: res === 'Top-Left' ? 'top-left' : 'joined',
-                  })
-                })
-                
+                ]
+              );
+
+              if (response.id === "close") return;
+
+              worksheet.SA_setMerge({
+                cellName,
+                rowspan,
+                colspan,
+                mergeMode: response.id,
+              });
             }
         },
         updateState: function(a, b, toolbarItem) {

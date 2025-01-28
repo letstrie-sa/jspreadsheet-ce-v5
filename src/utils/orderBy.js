@@ -1,10 +1,9 @@
-import jSuites from 'jsuites';
 import { setHistory } from './history.js';
 import dispatch from './dispatch.js';
 import { updateTableReferences } from './internal.js';
 import { loadPage } from './lazyLoading.js';
 import { closeFilter } from './filter.js';
-import { SA_PROMPT } from './sa_functions.js'
+import { SA_ALERT } from './prompts.js'
 
 /**
  * Update order arrow
@@ -92,25 +91,8 @@ export const orderBy = function(column, order) {
     if (column >= 0) {
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
-            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                {
-                    text: 'Yes',
-                    type: 'danger',
-                    onclick: () => {
-                        // Remove merged cells
-                        obj.destroyMerge();
-                        // Continue with sorting
-                        continueSorting();
-                    }
-                },
-                {
-                    text: 'No',
-                    type: 'primary',
-                    onclick: () => {
-                        // Do nothing
-                    }
-                }
-            ])
+            SA_ALERT("Rows or columns with merged cells cannot be ordered.")
+            return false;
             // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
             //     return false;
             // } else {

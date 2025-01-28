@@ -1,4 +1,3 @@
-import jSuites from "jsuites";
 import { getNumberOfColumns } from "./columns.js";
 import { createCell, updateTableReferences } from "./internal.js";
 import dispatch from "./dispatch.js";
@@ -6,7 +5,7 @@ import { isRowMerged } from "./merges.js";
 import { conditionalSelectionUpdate, getSelectedRows, updateCornerPosition } from "./selection.js";
 import { setHistory } from "./history.js";
 import { getColumnNameFromId } from "./internalHelpers.js";
-import { SA_PROMPT } from "./sa_functions.js"
+import { SA_ALERT } from "./prompts.js"
 
 /**
  * Create row
@@ -152,20 +151,9 @@ export const insertRow = function(mixed, rowNumber, insertBefore) {
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
             if (isRowMerged.call(obj, rowNumber, insertBefore).length) {
-                SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                    {
-                        text: 'Yes',
-                        type: 'danger',
-                        onclick: () => {
-                            obj.destroyMerge();
-                            processInsertRow();
-                        }
-                    }, {
-                        text: 'No',
-                        type: 'primary',
-                        onclick: () => {}
-                    }
-                ])
+              SA_ALERT('Rows or columns with merged cells cannot be added or removed.');
+              return false;
+              
                 // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
                 //     return false;
                 // } else {
@@ -177,129 +165,102 @@ export const insertRow = function(mixed, rowNumber, insertBefore) {
         const processInsertRow = () => {
           // Clear any search
           if (obj.options.search == true) {
-              if (obj.results && obj.results.length != obj.rows.length) {
-                  SA_PROMPT('This action will clear your search results. Are you sure?', [
-                    {
-                        text: 'Yes',
-                        type: 'danger',
-                        onclick: () => {
-                            obj.resetSearch();
-                            postResetSearch()
-                            return true
-                        }
-                    }, {
-                        text: 'No',
-                        type: 'primary',
-                          onclick: () => {
-                            return false
-                        }
-                    }
-                ])
-            //   if (
-            //     confirm(
-            //       jSuites.translate(
-            //         'This action will clear your search results. Are you sure?'
-            //       )
-            //     )
-            //   ) {
-            //     obj.resetSearch()
-            //   } else {
-            //     return false
-            //   }
+            if (obj.results && obj.results.length != obj.rows.length) {
+              obj.resetSearch();
             }
 
-              obj.results = null
-              postResetSearch()
+            obj.results = null;
+            postResetSearch();
           }
 
-            const postResetSearch = () => {
-              // Insertbefore
-              const rowIndex = !insertBefore ? rowNumber + 1 : rowNumber
+          const postResetSearch = () => {
+            // Insertbefore
+            const rowIndex = !insertBefore ? rowNumber + 1 : rowNumber;
 
-              // Keep the current data
-              const currentRecords = obj.records.splice(rowIndex)
-              const currentData = obj.options.data.splice(rowIndex)
-              const currentRows = obj.rows.splice(rowIndex)
+            // Keep the current data
+            const currentRecords = obj.records.splice(rowIndex);
+            const currentData = obj.options.data.splice(rowIndex);
+            const currentRows = obj.rows.splice(rowIndex);
 
-              // Adding lines
-              const rowRecords = []
-              const rowData = []
-              const rowNode = []
+            // Adding lines
+            const rowRecords = [];
+            const rowData = [];
+            const rowNode = [];
 
-              for (let row = rowIndex; row < numOfRows + rowIndex; row++) {
-                // Push data to the data container
-                obj.options.data[row] = []
-                for (let col = 0; col < obj.options.columns.length; col++) {
-                  obj.options.data[row][col] = data[col] ? data[col] : ''
-                }
-                // Create row
-                const newRow = createRow.call(obj, row, obj.options.data[row])
-                // Append node
-                if (currentRows[0]) {
-                  if (
-                    Array.prototype.indexOf.call(
-                      obj.tbody.children,
-                      currentRows[0].element
-                    ) >= 0
-                  ) {
-                    obj.tbody.insertBefore(
-                      newRow.element,
-                      currentRows[0].element
-                    )
-                  }
-                } else {
-                  if (
-                    Array.prototype.indexOf.call(
-                      obj.tbody.children,
-                      obj.rows[rowNumber].element
-                    ) >= 0
-                  ) {
-                    obj.tbody.appendChild(newRow.element)
-                  }
-                }
-                // Record History
-                rowRecords.push(obj.records[row])
-                rowData.push(obj.options.data[row])
-                rowNode.push(newRow)
+            for (let row = rowIndex; row < numOfRows + rowIndex; row++) {
+              // Push data to the data container
+              obj.options.data[row] = [];
+              for (let col = 0; col < obj.options.columns.length; col++) {
+                obj.options.data[row][col] = data[col] ? data[col] : "";
               }
-
-              // Copy the data back to the main data
-              Array.prototype.push.apply(obj.records, currentRecords)
-              Array.prototype.push.apply(obj.options.data, currentData)
-              Array.prototype.push.apply(obj.rows, currentRows)
-
-              for (let j = rowIndex; j < obj.rows.length; j++) {
-                obj.rows[j].y = j
-              }
-
-              for (let j = rowIndex; j < obj.records.length; j++) {
-                for (let i = 0; i < obj.records[j].length; i++) {
-                  obj.records[j][i].y = j
+              // Create row
+              const newRow = createRow.call(obj, row, obj.options.data[row]);
+              // Append node
+              if (currentRows[0]) {
+                if (
+                  Array.prototype.indexOf.call(
+                    obj.tbody.children,
+                    currentRows[0].element
+                  ) >= 0
+                ) {
+                  obj.tbody.insertBefore(
+                    newRow.element,
+                    currentRows[0].element
+                  );
+                }
+              } else {
+                if (
+                  Array.prototype.indexOf.call(
+                    obj.tbody.children,
+                    obj.rows[rowNumber].element
+                  ) >= 0
+                ) {
+                  obj.tbody.appendChild(newRow.element);
                 }
               }
-
-              // Respect pagination
-              if (obj.options.pagination > 0) {
-                obj.page(obj.pageNumber)
-              }
-
-              // Keep history
-              setHistory.call(obj, {
-                action: 'insertRow',
-                rowNumber: rowNumber,
-                numOfRows: numOfRows,
-                insertBefore: insertBefore,
-                rowRecords: rowRecords,
-                rowData: rowData,
-                rowNode: rowNode,
-              })
-
-              // Remove table references
-              updateTableReferences.call(obj)
-
-              // Events
-              dispatch.call(obj, 'oninsertrow', obj, onbeforeinsertrowRecords)
+              // Record History
+              rowRecords.push(obj.records[row]);
+              rowData.push(obj.options.data[row]);
+              rowNode.push(newRow);
             }
+
+            // Copy the data back to the main data
+            Array.prototype.push.apply(obj.records, currentRecords);
+            Array.prototype.push.apply(obj.options.data, currentData);
+            Array.prototype.push.apply(obj.rows, currentRows);
+
+            for (let j = rowIndex; j < obj.rows.length; j++) {
+              obj.rows[j].y = j;
+            }
+
+            for (let j = rowIndex; j < obj.records.length; j++) {
+              for (let i = 0; i < obj.records[j].length; i++) {
+                obj.records[j][i].y = j;
+              }
+            }
+
+            // Respect pagination
+            if (obj.options.pagination > 0) {
+              obj.page(obj.pageNumber);
+            }
+
+            // Keep history
+            setHistory.call(obj, {
+              action: "insertRow",
+              rowNumber: rowNumber,
+              numOfRows: numOfRows,
+              insertBefore: insertBefore,
+              rowRecords: rowRecords,
+              rowData: rowData,
+              rowNode: rowNode,
+            });
+
+            // Remove table references
+            updateTableReferences.call(obj);
+
+            // Events
+            dispatch.call(obj, "oninsertrow", obj, onbeforeinsertrowRecords);
+          };
         }
     }
 }
@@ -327,60 +288,21 @@ export const moveRow = function(o, d, ignoreDom) {
             // } else {
             //     obj.destroyMerge();
             // }
-
-            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                {
-                    text: 'Yes',
-                    type: 'danger',
-                    onclick: () => {
-                        obj.destroyMerge();
-                        resetSearch()
-                    }
-                }, {
-                    text: 'No',
-                    type: 'primary',
-                    onclick: () => {}
-                }
-            ])
+            SA_ALERT("Rows or columns with merged cells cannot be moved.")
+            return false;
         }
     }
 
     const resetSearch = () => {
-        if (obj.options.search == true) {
-            if (obj.results && obj.results.length != obj.rows.length) {
-            // if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
-            //     obj.resetSearch();
-            // } else {
-            //     return false;
-            // }
-
-            SA_PROMPT(
-                'This action will clear your search results. Are you sure?',
-                [
-                {
-                    text: 'Yes',
-                    type: 'danger',
-                    onclick: () => {
-                        obj.resetSearch()
-                        processMoveRow()
-                        return true
-                    },
-                },
-                {
-                    text: 'No',
-                    type: 'primary',
-                    onclick: () => {
-                        return false
-                    },
-                },
-                ]
-            )
-            }
-
-            obj.results = null
-            processMoveRow()
+      if (obj.options.search == true) {
+        if (obj.results && obj.results.length != obj.rows.length) {
+          obj.resetSearch();
         }
-    }
+
+        obj.results = null;
+        processMoveRow();
+      }
+    };
 
     const processMoveRow = () => {
            if (!ignoreDom) {
@@ -510,64 +432,21 @@ export const deleteRow = function(rowNumber, numOfRows) {
                     }
                 }
                 if (mergeExists) {
-                    // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                    //     return false;
-                    // } else {
-                    //     obj.destroyMerge();
-                    // }
-                    SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                        {
-                            text: 'Yes',
-                            type: 'danger',
-                            onclick: () => {
-                                obj.destroyMerge();
-                                processResetSearch()
-                            }
-                        }, {
-                            text: 'No',
-                            type: 'primary',
-                            onclick: () => {}
-                        }
-                    ])
+                  SA_ALERT("Rows or columns with merged cells cannot be added or removed.")
+                  return false;
                 }
 
                 const processResetSearch = () => {
                   // Clear any search
                   if (obj.options.search == true) {
                     if (obj.results && obj.results.length != obj.rows.length) {
-                      // if (confirm(jSuites.translate('This action will clear your search results. Are you sure?'))) {
-                      //     obj.resetSearch();
-                      // } else {
-                      //     return false;
-                      // }
-
-                      SA_PROMPT(
-                        'This action will clear your search results. Are you sure?',
-                        [
-                          {
-                            text: 'Yes',
-                            type: 'danger',
-                            onclick: () => {
-                              obj.resetSearch()
-                              processDeleteRow()
-                              return true
-                            },
-                          },
-                          {
-                            text: 'No',
-                            type: 'primary',
-                            onclick: () => {
-                              return false
-                            },
-                          },
-                        ]
-                      )
+                      obj.resetSearch();
                     }
 
-                    obj.results = null
-                    processDeleteRow()
+                    obj.results = null;
+                    processDeleteRow();
                   }
-                }
+                };
 
                 const processDeleteRow = () => {
                   // If delete all rows, and set allowDeletingAllRows false, will stay one row

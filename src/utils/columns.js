@@ -7,7 +7,7 @@ import { createCell, updateTableReferences } from './internal.js';
 import { conditionalSelectionUpdate, updateCornerPosition } from './selection.js';
 import { setFooter } from './footer.js';
 import { getColumnNameFromId, injectArray } from './internalHelpers.js';
-import { SA_PROMPT } from './sa_functions.js'
+import { SA_ALERT } from './prompts.js'
 
 export const getNumberOfColumns = function() {
     const obj = this;
@@ -162,20 +162,10 @@ export const insertColumn = function(mixed, columnNumber, insertBefore, properti
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
             if (isColMerged.call(obj, columnNumber, insertBefore).length) {
-                SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                    {
-                        text: 'Yes',
-                        onclick: () => {
-                            obj.destroyMerge();
-                            processInsertColumn();
-                        },
-                        type: 'danger',
-                    },
-                    {
-                        text: 'No',
-                        type: 'primary',
-                    },
-                ])
+                SA_ALERT('Rows or columns with merged cells cannot be added or removed.')
+                return false;
+
+                
                 // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
                 //     return false;
                 // } else {
@@ -340,19 +330,9 @@ export const moveColumn = function(o, d) {
         }
 
         if (isColMerged.call(obj, o).length || isColMerged.call(obj, d, insertBefore).length) {
-            SA_PROMPT('This action will destroy any existing merged cells. Are you sure?', [
-                {
-                    text: 'Yes',
-                    type: 'danger',
-                    onclick: () => {
-                        obj.destroyMerge();
-                        processMoveColumn()
-                    },
-                }, {
-                    text: 'No',
-                    type: 'primary',
-                }
-            ])
+            SA_ALERT('Rows or columns with merged cells cannot be moved.')
+            return false;
+
             // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
             //     return false;
             // } else {
@@ -607,23 +587,9 @@ export const deleteColumn = function(columnNumber, numOfColumns) {
                     }
                 }
                 if (mergeExists) {
-                    SA_PROMPT(
-                      'This action will destroy any existing merged cells. Are you sure?',
-                      [
-                        {
-                          text: 'Yes',
-                          type: 'danger',
-                          onclick: () => {
-                            obj.destroyMerge()
-                            processDeleteColumn()
-                          },
-                        },
-                        {
-                          text: 'No',
-                          type: 'primary',
-                        },
-                      ]
-                    )
+                    SA_ALERT('Rows or columns with merged cells cannot be added or removed.')
+                    return false;
+
                     // if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
                     //     return false;
                     // } else {

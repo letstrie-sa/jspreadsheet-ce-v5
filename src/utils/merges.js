@@ -101,7 +101,6 @@ export const getMerge = function(cellName) {
         }
     } else {
         if (obj.options.mergeCells) {
-            var mergedCells = obj.options.mergeCells;
             const keys = Object.keys(obj.options.mergeCells);
             for (let i = 0; i < keys.length; i++) {
                 data[keys[i]] = [ obj.options.mergeCells[keys[i]][0], obj.options.mergeCells[keys[i]][1] ];
@@ -349,37 +348,6 @@ export const SA_removeMerge = function({
                 rowspan,
                 colspan,
             }
-        })
-    }
-}
-
-// TODO: Replace these type of alerts: alert(jSuites.translate(test));
-// TODO: SA_PROMPT (message, actions[]) -> action 
-// TODO: SA_ERROR (message) -> void
-
-export const mergeActiveCells = function () {
-    // TODO: ADD PROMPT HERE
-    // const mergeType = await SA_Prompt("What type of merge you need?", [{message: "top-left"}, {message: "joined"}, {message: "cancel"}])
-
-    const worksheet = getWorksheetInstance.call(this);
-
-    const selectedCells = worksheet.selectedContainer;
-    if (selectedCells?.length !== 4) {
-        throw new Error('Invalid selected cells');
-    }
-
-    const [topLeftY, topLeftX, bottomRightY, bottomRightX] = selectedCells;
-
-    let cellName = getCellNameFromCoords(topLeftY, topLeftX); // Like: B22, C1, B5
-    
-    let colspan = bottomRightY - topLeftY + 1;
-    let rowspan = bottomRightX - topLeftX + 1;
-
-    if (colspan !== 1 || rowspan !== 1) {
-        worksheet.SA_setMerge({
-            cellName,
-            rowspan,
-            colspan,
         })
     }
 }
