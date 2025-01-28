@@ -1,7 +1,7 @@
 import dispatch from "./dispatch.js";
 import { injectArray } from "./internalHelpers.js";
 import { updateTableReferences } from "./internal.js";
-import { SA_removeMerge, SA_setMerge, setMerge } from "./merges.js";
+import { SA_removeMerge, SA_setMerge } from "./merges.js";
 import { updateOrder, updateOrderArrow } from "./orderBy.js";
 import { conditionalSelectionUpdate } from "./selection.js";
 
@@ -213,8 +213,6 @@ export const undo = function() {
             obj.moveRow(historyRecord.newValue, historyRecord.oldValue);
         } else if (historyRecord.action == 'moveColumn') {
             obj.moveColumn(historyRecord.newValue, historyRecord.oldValue);
-        } else if (historyRecord.action == 'setMerge') {
-            obj.removeMerge(historyRecord.column, historyRecord.data);
         } else if (historyRecord.action === 'SA_removeMerge') {
             SA_setMerge.call(obj, historyRecord.payload)
         } else if (historyRecord.action === 'SA_setMerge') {
@@ -302,8 +300,6 @@ export const redo = function() {
             obj.moveRow(historyRecord.oldValue, historyRecord.newValue);
         } else if (historyRecord.action == 'moveColumn') {
             obj.moveColumn(historyRecord.oldValue, historyRecord.newValue);
-        } else if (historyRecord.action == 'setMerge') {
-            setMerge.call(obj, historyRecord.column, historyRecord.colspan, historyRecord.rowspan, 1);
         } else if (historyRecord.action === 'SA_removeMerge') {
             SA_removeMerge.call(obj, historyRecord.payload)
         } else if (historyRecord.action === 'SA_setMerge') {

@@ -1,7 +1,6 @@
 import jSuites from "jsuites";
 import { getCellNameFromCoords } from "./helpers.js";
 import { getWorksheetInstance } from "./internal.js";
-import { mergeActiveCells } from "./merges.js";
 
 const setItemStatus = function(toolbarItem, worksheet) {
     if (worksheet.options.editable != false) {
@@ -182,7 +181,37 @@ export const getDefault = function() {
     items.push({
         content: 'web',
         tooltip: jSuites.translate('Merge the selected cells'),
-        onclick: mergeActiveCells,
+        onclick: function () {
+            // TODO: ADD PROMPT HERE
+            // const mergeType = await SA_Prompt("What type of merge you need?", [{message: "top-left"}, {message: "joined"}, {message: "cancel"}])
+
+
+// TODO: Replace these type of alerts: alert(jSuites.translate(test));
+// TODO: SA_PROMPT (message, actions[]) -> action 
+// TODO: SA_ERROR (message) -> void
+        
+            const worksheet = getActive();
+        
+            const selectedCells = worksheet.selectedContainer;
+            if (selectedCells?.length !== 4) {
+                throw new Error('Invalid selected cells');
+            }
+        
+            const [topLeftY, topLeftX, bottomRightY, bottomRightX] = selectedCells;
+        
+            let cellName = getCellNameFromCoords(topLeftY, topLeftX); // Like: B22, C1, B5
+            
+            let colspan = bottomRightY - topLeftY + 1;
+            let rowspan = bottomRightX - topLeftX + 1;
+        
+            if (colspan !== 1 || rowspan !== 1) {
+                worksheet.SA_setMerge({
+                    cellName,
+                    rowspan,
+                    colspan,
+                })
+            }
+        },
         updateState: function(a, b, toolbarItem) {
             setItemStatus(toolbarItem, getActive());
         }
