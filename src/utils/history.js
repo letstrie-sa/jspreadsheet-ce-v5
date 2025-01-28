@@ -1,7 +1,7 @@
 import dispatch from "./dispatch.js";
 import { injectArray } from "./internalHelpers.js";
 import { updateTableReferences } from "./internal.js";
-import { setMerge } from "./merges.js";
+import { SA_removeMerge, SA_setMerge, setMerge } from "./merges.js";
 import { updateOrder, updateOrderArrow } from "./orderBy.js";
 import { conditionalSelectionUpdate } from "./selection.js";
 
@@ -215,6 +215,10 @@ export const undo = function() {
             obj.moveColumn(historyRecord.newValue, historyRecord.oldValue);
         } else if (historyRecord.action == 'setMerge') {
             obj.removeMerge(historyRecord.column, historyRecord.data);
+        } else if (historyRecord.action === 'SA_removeMerge') {
+            SA_setMerge.call(obj, historyRecord.payload)
+        } else if (historyRecord.action === 'SA_setMerge') {
+            SA_removeMerge.call(obj, historyRecord.payload)
         } else if (historyRecord.action == 'setStyle') {
             obj.setStyle(historyRecord.oldValue, null, null, 1);
         } else if (historyRecord.action == 'setWidth') {
@@ -284,6 +288,8 @@ export const redo = function() {
         // History
         historyRecord = obj.history[++obj.historyIndex];
 
+        console.log(historyRecord)
+
         if (historyRecord.action == 'insertRow') {
             historyProcessRow.call(obj, 0, historyRecord);
         } else if (historyRecord.action == 'deleteRow') {
@@ -298,6 +304,10 @@ export const redo = function() {
             obj.moveColumn(historyRecord.oldValue, historyRecord.newValue);
         } else if (historyRecord.action == 'setMerge') {
             setMerge.call(obj, historyRecord.column, historyRecord.colspan, historyRecord.rowspan, 1);
+        } else if (historyRecord.action === 'SA_removeMerge') {
+            SA_removeMerge.call(obj, historyRecord.payload)
+        } else if (historyRecord.action === 'SA_setMerge') {
+            SA_setMerge.call(obj, historyRecord.payload)
         } else if (historyRecord.action == 'setStyle') {
             obj.setStyle(historyRecord.newValue, null, null, 1);
         } else if (historyRecord.action == 'setWidth') {

@@ -8,7 +8,7 @@ import { getData, getDataFromRange, getValue, getValueFromCoords, setData, setVa
 import { cutControls, scrollControls, wheelControls } from './events.js';
 import { getHighlighted, getRange, getSelected, getSelectedColumns, getSelectedRows, getSelection, isSelected, resetSelection, selectAll, updateSelectionFromCoords } from './selection.js';
 import { deleteRow, getHeight, getRowData, hideRow, insertRow, moveRow, setHeight, setRowData, showRow } from './rows.js';
-import { destroyMerge, getMerge, removeMerge, setMerge } from './merges.js';
+import { destroyMerge, getMerge, removeMerge, SA_removeMerge, setMerge, SA_setMerge, mergeActiveCells } from './merges.js';
 import { resetSearch, search } from './search.js';
 import { getHeader, getHeaders, setHeader } from './headers.js';
 import { getStyle, resetStyle, setStyle } from './style.js';
@@ -597,8 +597,17 @@ const worksheetPublicMethods = [
         return setHeight.call(this, row, height);
     }],
     ['getMerge', getMerge],
+    ['SA_setMerge', function(data) {
+        return SA_setMerge.call(this, data);
+    }],   
+    ['SA_removeMerge', function(data) {
+        return SA_removeMerge.call(this, data);
+    }],
     ['setMerge', function(cellName, colspan, rowspan) {
         return setMerge.call(this, cellName, colspan, rowspan);
+    }],
+    ['mergeActiveCells', function() {
+        return mergeActiveCells.call(this)
     }],
     ['destroyMerge', function() {
         return destroyMerge.call(this);

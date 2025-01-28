@@ -1,6 +1,7 @@
 import jSuites from "jsuites";
 import { getCellNameFromCoords } from "./helpers.js";
 import { getWorksheetInstance } from "./internal.js";
+import { mergeActiveCells } from "./merges.js";
 
 const setItemStatus = function(toolbarItem, worksheet) {
     if (worksheet.options.editable != false) {
@@ -181,31 +182,7 @@ export const getDefault = function() {
     items.push({
         content: 'web',
         tooltip: jSuites.translate('Merge the selected cells'),
-        onclick: function() {
-            const worksheet = getActive();
-
-            if (worksheet.selectedCell && confirm(jSuites.translate('The merged cells will retain the value of the top-left cell only. Are you sure?'))) {
-
-                const selectedRange = [
-                    Math.min(worksheet.selectedCell[0], worksheet.selectedCell[2]),
-                    Math.min(worksheet.selectedCell[1], worksheet.selectedCell[3]),
-                    Math.max(worksheet.selectedCell[0], worksheet.selectedCell[2]),
-                    Math.max(worksheet.selectedCell[1], worksheet.selectedCell[3]),
-                ];
-
-                let cell = getCellNameFromCoords(selectedRange[0], selectedRange[1]);
-                if (worksheet.records[selectedRange[1]][selectedRange[0]].element.getAttribute('data-merged')) {
-                    worksheet.removeMerge(cell);
-                } else {
-                    let colspan = selectedRange[2] - selectedRange[0] + 1;
-                    let rowspan = selectedRange[3] - selectedRange[1] + 1;
-
-                    if (colspan !== 1 || rowspan !== 1) {
-                        worksheet.setMerge(cell, colspan, rowspan);
-                    }
-                }
-            }
-        },
+        onclick: mergeActiveCells,
         updateState: function(a, b, toolbarItem) {
             setItemStatus(toolbarItem, getActive());
         }
