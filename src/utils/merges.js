@@ -138,10 +138,7 @@ export const SA_setMerge = function ({
 }) {
     const obj = this;
 
-    console.log({mergeMode})
-
     if(colspan === 1 && rowspan === 1) {
-        // TODO: SA_ERROR + return
         console.error("Invalid merge: Atleast two cells need to merge!!")
         return
     }
@@ -158,6 +155,7 @@ export const SA_setMerge = function ({
         topLeftY,
         bottomRightX,
         bottomRightY,
+        mergeMode,
         cellValues: {}
     }
 
@@ -212,6 +210,7 @@ export const SA_setMerge = function ({
 
     backup.topLeftValue = topLeftValue;
     backup.spaceSeparatedValue = spaceSeparatedValue.trim();
+    backup.value = mergeMode === 'combine' ? backup.spaceSeparatedValue : backup.topLeftValue;
 
     if(anyMergeCells) {
         for (let key in topLeftMergeCells) {
@@ -241,6 +240,8 @@ export const SA_setMerge = function ({
     obj.records[topLeftX][topLeftY].element.setAttribute('data-merged', 'true');
     obj.records[topLeftX][topLeftY].element.style.overflow = 'hidden';
 
+    let topLeftCellValue = backup.value;
+
     const data = [];
     for (let x = topLeftX; x <= bottomRightX; x++) {
         for (let y = topLeftY; y <= bottomRightY; y++) {
@@ -259,7 +260,10 @@ export const SA_setMerge = function ({
     if(reMarging) {
         obj.options.mergeCells[cellName][2] = prevEls;
         obj.options.saMergeCells[cellName][2] = prevBackup;
+        topLeftCellValue = prevBackup.value;
     }
+
+    updateCell.call(obj, topLeftY, topLeftX, topLeftCellValue, true)
 
     if (! ignoreHistoryAndEvents) {
         console.log("History for SA_setMerge: cellName=",cellName, "rowspan=",rowspan, "colspan=" , colspan);
@@ -269,6 +273,7 @@ export const SA_setMerge = function ({
                 cellName,
                 rowspan,
                 colspan,
+                mergeMode,
             }
         })
 
@@ -303,7 +308,9 @@ export const SA_removeMerge = function({
     const [colspan, rowspan, elements] = mergeCellsObj;
 
     let index = 0, rs, cs;
-    const backupCellValues = saMergeCellsObj[2].cellValues;
+    const backup = saMergeCellsObj[2];
+    const backupCellValues = backup.cellValues;
+    const {mergeMode} = backup;
     const reMergePayloads = [];
 
     for (rs = 0; rs < rowspan; rs++) {
@@ -324,7 +331,8 @@ export const SA_removeMerge = function({
                             colspan: bkp.colspan,
                             rowspan: bkp.rowspan,
                             ignoreHistoryAndEvents: true,
-                            reMarging: true
+                            reMarging: true,
+                            mergeMode: bkp.mergeMode,
                         })
                     }
                 }
@@ -336,6 +344,7 @@ export const SA_removeMerge = function({
         SA_setMerge.call(obj, payload);
     }
 
+    updateCell.call(obj, y, x, backup.topLeftValue, true)
     updateSelection.call(obj, obj.records[x][y].element, obj.records[x+rs-1][y+cs-1].element);
 
     if (!ignoreHistoryAndEvents) {
@@ -347,6 +356,7 @@ export const SA_removeMerge = function({
                 cellName,
                 rowspan,
                 colspan,
+                mergeMode,
             }
         })
     }
