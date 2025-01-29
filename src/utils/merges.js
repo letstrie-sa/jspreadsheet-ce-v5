@@ -1,7 +1,5 @@
-import jSuites from "jsuites";
-
-import { getColumnNameFromId, getIdFromColumnName } from "./internalHelpers.js";
-import { getWorksheetInstance, updateCell } from "./internal.js";
+import { getIdFromColumnName } from "./internalHelpers.js";
+import { updateCell } from "./internal.js";
 import { setHistory } from "./history.js";
 import dispatch from "./dispatch.js";
 import { updateSelection } from "./selection.js";
@@ -135,6 +133,7 @@ export const SA_setMerge = function ({
     ignoreHistoryAndEvents,
     reMarging = false, // When unmerging cells, if we detect any merged cells inside it, we need to remerge that portion.
     mergeMode = 'top-left',
+    dispatchEvent = true,
 }) {
     const obj = this;
 
@@ -255,7 +254,7 @@ export const SA_setMerge = function ({
         }
     }
 
-    updateSelection.call(obj, obj.records[topLeftX][topLeftY].element);
+    if(dispatchEvent) updateSelection.call(obj, obj.records[topLeftX][topLeftY].element);
 
     if(reMarging) {
         obj.options.mergeCells[cellName][2] = prevEls;
@@ -277,7 +276,9 @@ export const SA_setMerge = function ({
             }
         })
 
-        dispatch.call(obj, 'onmerge', obj, { [cellName]: [colspan, rowspan]});
+        if(dispatchEvent) {
+            dispatch.call(obj, 'onmerge', obj, { [cellName]: [colspan, rowspan]});
+        } 
     }
 }
 

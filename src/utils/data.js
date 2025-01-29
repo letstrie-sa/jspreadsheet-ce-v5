@@ -121,7 +121,13 @@ export const setData = function(data) {
         const keys = Object.keys(obj.options.mergeCells);
         for (let i = 0; i < keys.length; i++) {
             const num = obj.options.mergeCells[keys[i]];
-            SA_setMerge.call(obj, {cellName: keys[i], colspan: num[0], rowspan: num[1], ignoreHistoryAndEvents: true})
+            SA_setMerge.call(obj, {
+              cellName: keys[i],
+              colspan: num[0],
+              rowspan: num[1],
+              ignoreHistoryAndEvents: true,
+              dispatchEvent: false,
+            });
         }
     }
 
