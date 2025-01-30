@@ -5,6 +5,7 @@ import dispatch from "./dispatch.js";
 import { updateSelection } from "./selection.js";
 import { getCellNameFromCoords } from "./helpers.js";
 import _ from "lodash";
+import { setStyle } from "./style.js";
 
 /**
  * Is column merged
@@ -237,6 +238,7 @@ export const SA_setMerge = function ({
     obj.options.mergeCells[cellName] = [ colspan, rowspan, [] ];
     obj.options.saMergeCells[cellName] = [ colspan, rowspan, backup ];
     obj.records[topLeftX][topLeftY].element.setAttribute('data-merged', 'true');
+    obj.records[topLeftX][topLeftY].element.setAttribute('data-merge-src', cellName);
     obj.records[topLeftX][topLeftY].element.style.overflow = 'hidden';
 
     let topLeftCellValue = backup.value;
@@ -250,6 +252,7 @@ export const SA_setMerge = function ({
                 obj.options.mergeCells[cellName][2].push(obj.records[x][y].element);
                 obj.records[x][y].element.style.display = 'none';
                 obj.records[x][y].element = obj.records[topLeftX][topLeftY].element;
+                obj.records[x][y].element.setAttribute('data-merge-src', cellName);
             }
         }
     }
@@ -262,7 +265,15 @@ export const SA_setMerge = function ({
         topLeftCellValue = prevBackup.value;
     }
 
-    updateCell.call(obj, topLeftY, topLeftX, topLeftCellValue, true)
+    if (mergeMode === 'combine') {
+        obj.records[topLeftY][topLeftX].element.style.lineHeight = (obj.options.defaultRowHeight ?? 25) + "px";
+        console.log("Default row height is " + obj.options.defaultRowHeight)
+        console.log("lineHeight: " + obj.records[topLeftY][topLeftX].element.style.lineHeight)
+
+        setStyle.call(obj, cellName, "lineHeight", (obj.options.defaultRowHeight ?? 25) + "px", true, true)
+    }
+
+    updateCell.call(obj, topLeftY, topLeftX, topLeftCellValue, true);
 
     if (! ignoreHistoryAndEvents) {
         console.log("History for SA_setMerge: cellName=",cellName, "rowspan=",rowspan, "colspan=" , colspan);
@@ -306,6 +317,7 @@ export const SA_removeMerge = function({
     obj.records[x][y].element.removeAttribute('colspan');
     obj.records[x][y].element.removeAttribute('rowspan');
     obj.records[x][y].element.removeAttribute('data-merged');
+    obj.records[x][y].element.removeAttribute('data-merge-src');
     const [colspan, rowspan, elements] = mergeCellsObj;
 
     let index = 0, rs, cs;
@@ -319,6 +331,7 @@ export const SA_removeMerge = function({
             if (rs > 0 || cs > 0) {
                 obj.records[x+rs][y+cs].element = elements[index++];
                 obj.records[x+rs][y+cs].element.style.display = '';
+                obj.records[x+rs][y+cs].element.removeAttribute('data-merge-src');
 
                 const name = getCellNameFromCoords(y+cs, x+rs);
 

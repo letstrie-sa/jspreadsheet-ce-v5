@@ -155,199 +155,343 @@ export const removeCopyingSelection = function() {
     }
 }
 
-export const updateSelectionFromCoords = function(x1, y1, x2, y2, origin) {
-    const obj = this;
+export const updateSelectionFromCoords = function (
+  topLeftCol,
+  topLeftRow,
+  bottomRightCol,
+  bottomRightRow,
+  origin
+) {
+  const obj = this;
 
-    // select column
-    if (y1 == null) {
-        y1 = 0;
-        y2 = obj.rows.length - 1;
+  // select column
+  if (topLeftRow == null) {
+    topLeftRow = 0;
+    bottomRightRow = obj.rows.length - 1;
 
-        if (x1 == null) {
-            return;
+    if (topLeftCol == null) {
+      return;
+    }
+  } else if (topLeftCol == null) {
+    // select row
+    topLeftCol = 0;
+    bottomRightCol = obj.options.data[0].length - 1;
+  }
+
+  // Same element
+  if (bottomRightCol == null) {
+    bottomRightCol = topLeftCol;
+  }
+  if (bottomRightRow == null) {
+    bottomRightRow = topLeftRow;
+  }
+
+  // Selection must be within the existing data
+  if (topLeftCol >= obj.headers.length) {
+    topLeftCol = obj.headers.length - 1;
+  }
+  if (topLeftRow >= obj.rows.length) {
+    topLeftRow = obj.rows.length - 1;
+  }
+  if (bottomRightCol >= obj.headers.length) {
+    bottomRightCol = obj.headers.length - 1;
+  }
+  if (bottomRightRow >= obj.rows.length) {
+    bottomRightRow = obj.rows.length - 1;
+  }
+
+  // Limits
+  let borderLeft = null;
+  let borderRight = null;
+  let borderTop = null;
+  let borderBottom = null;
+
+  // Origin & Destination
+  let leftMostCol, rightMostCol;
+
+  if (parseInt(topLeftCol) < parseInt(bottomRightCol)) {
+    leftMostCol = parseInt(topLeftCol);
+    rightMostCol = parseInt(bottomRightCol);
+  } else {
+    leftMostCol = parseInt(bottomRightCol);
+    rightMostCol = parseInt(topLeftCol);
+  }
+
+  let topMostRow, bottomMostRow;
+
+  if (parseInt(topLeftRow) < parseInt(bottomRightRow)) {
+    topMostRow = parseInt(topLeftRow);
+    bottomMostRow = parseInt(bottomRightRow);
+  } else {
+    topMostRow = parseInt(bottomRightRow);
+    bottomMostRow = parseInt(topLeftRow);
+  }
+
+  // Verify merged columns
+  for (let c = leftMostCol; c <= rightMostCol; c++) {
+    for (let r = topMostRow; r <= bottomMostRow; r++) {
+      const record = obj.records[r][c];
+      if (!record) continue;
+
+      const isCurCellMerged = record.element.getAttribute("data-merged");
+      if (!isCurCellMerged) continue;
+
+      const x = parseInt(record.element.getAttribute("data-x"));
+      const y = parseInt(record.element.getAttribute("data-y"));
+      const colspan = parseInt(record.element.getAttribute("colspan"));
+      const rowspan = parseInt(record.element.getAttribute("rowspan"));
+
+      if (colspan > 1) {
+        if (x < leftMostCol) {
+          leftMostCol = x;
         }
-    } else if (x1 == null) {
-        // select row
-        x1 = 0;
-        x2 = obj.options.data[0].length - 1;
-    }
-
-    // Same element
-    if (x2 == null) {
-        x2 = x1;
-    }
-    if (y2 == null) {
-        y2 = y1;
-    }
-
-    // Selection must be within the existing data
-    if (x1 >= obj.headers.length) {
-        x1 = obj.headers.length - 1;
-    }
-    if (y1 >= obj.rows.length) {
-        y1 = obj.rows.length - 1;
-    }
-    if (x2 >= obj.headers.length) {
-        x2 = obj.headers.length - 1;
-    }
-    if (y2 >= obj.rows.length) {
-        y2 = obj.rows.length - 1;
-    }
-
-    // Limits
-    let borderLeft = null;
-    let borderRight = null;
-    let borderTop = null;
-    let borderBottom = null;
-
-    // Origin & Destination
-    let px, ux;
-
-    if (parseInt(x1) < parseInt(x2)) {
-        px = parseInt(x1);
-        ux = parseInt(x2);
-    } else {
-        px = parseInt(x2);
-        ux = parseInt(x1);
-    }
-
-    let py, uy;
-
-    if (parseInt(y1) < parseInt(y2)) {
-        py = parseInt(y1);
-        uy = parseInt(y2);
-    } else {
-        py = parseInt(y2);
-        uy = parseInt(y1);
-    }
-
-    // Verify merged columns
-    for (let i = px; i <= ux; i++) {
-        for (let j = py; j <= uy; j++) {
-            if (obj.records[j][i] && obj.records[j][i].element.getAttribute('data-merged')) {
-                const x = parseInt(obj.records[j][i].element.getAttribute('data-x'));
-                const y = parseInt(obj.records[j][i].element.getAttribute('data-y'));
-                const colspan = parseInt(obj.records[j][i].element.getAttribute('colspan'));
-                const rowspan = parseInt(obj.records[j][i].element.getAttribute('rowspan'));
-
-                if (colspan > 1) {
-                    if (x < px) {
-                        px = x;
-                    }
-                    if (x + colspan > ux) {
-                        ux = x + colspan - 1;
-                    }
-                }
-
-                if (rowspan) {
-                    if (y < py) {
-                        py = y;
-
-                    }
-                    if (y + rowspan > uy) {
-                        uy = y + rowspan - 1;
-                    }
-                }
-            }
+        if (x + colspan > rightMostCol) {
+          rightMostCol = x + colspan - 1;
         }
-    }
+      }
 
-    // Vertical limits
-    for (let j = py; j <= uy; j++) {
-        if (obj.rows[j].element.style.display != 'none') {
-            if (borderTop == null) {
-                borderTop = j;
-            }
-            borderBottom = j;
+      if (rowspan > 1) {
+        if (y < topMostRow) {
+          topMostRow = y;
         }
-    }
-
-    for (let i = px; i <= ux; i++) {
-        for (let j = py; j <= uy; j++) {
-            // Horizontal limits
-            if (!obj.options.columns || !obj.options.columns[i] || obj.options.columns[i].type != 'hidden') {
-                if (borderLeft == null) {
-                    borderLeft = i;
-                }
-                borderRight = i;
-            }
+        if (y + rowspan > bottomMostRow) {
+          bottomMostRow = y + rowspan - 1;
         }
+      }
     }
+  }
 
-    // Create borders
-    if (! borderLeft) {
-        borderLeft = 0;
-    }
-    if (! borderRight) {
-        borderRight = 0;
-    }
+  // 01979196081
 
-    const ret = dispatch.call(obj, 'onbeforeselection', obj, borderLeft, borderTop, borderRight, borderBottom, origin);
-    if (ret === false) {
-        return false;
-    }
+  console.log(`updateSelectionFromCoords: 
+    topLeftRow: ${topLeftRow},
+    topLeftCol: ${topLeftCol},
+    bottomRightRow: ${bottomRightRow},
+    bottomRightCol: ${bottomRightCol}`);
 
-    // Reset Selection
-    const previousState = obj.resetSelection();
+  let maxIterations = 10; // to prevent unexpected number of iterations...
+  let visited = {};
+  while (maxIterations-- > 0) {
+    if (!obj?.records) break;
 
-    // Keep selected cell
-    obj.selectedCell = [x1, y1, x2, y2];
+    const mergeSources = new Set();
 
-    // Add selected cell
-    if (obj.records[y1][x1]) {
-        obj.records[y1][x1].element.classList.add('highlight-selected');
-    }
+    for (let c = leftMostCol; c <= rightMostCol; c++) {
+      // - - - - - - - - - - topMostRow - - - - - - - - - -
+      // leftMostCol | | | | | | | | | | | | | rightMostCol
+      // - - - - - - - - - bottomMostRow - - - - - - - - -
 
-    // Redefining styles
-    for (let i = px; i <= ux; i++) {
-        for (let j = py; j <= uy; j++) {
-            if (obj.rows[j].element.style.display != 'none' && obj.records[j][i].element.style.display != 'none') {
-                obj.records[j][i].element.classList.add('highlight');
-                obj.highlighted.push(obj.records[j][i]);
-            }
+      // topCell
+      const topCell = obj.records[topMostRow]?.[c];
+      if (topCell?.element) {
+        const mergeSrc = topCell.element.getAttribute("data-merge-src");
+        if (mergeSrc && !visited[mergeSrc]) {
+          visited[mergeSrc] = true;
+          mergeSources.add(mergeSrc);
         }
-    }
+      }
 
-    for (let i = borderLeft; i <= borderRight; i++) {
-        if ((!obj.options.columns || !obj.options.columns[i] || obj.options.columns[i].type != 'hidden') && obj.cols[i].colElement.style && obj.cols[i].colElement.style.display != 'none') {
-            // Top border
-            if (obj.records[borderTop] && obj.records[borderTop][i]) {
-                obj.records[borderTop][i].element.classList.add('highlight-top');
-            }
-            // Bottom border
-            if (obj.records[borderBottom] && obj.records[borderBottom][i]) {
-                obj.records[borderBottom][i].element.classList.add('highlight-bottom');
-            }
-            // Add selected from headers
-            obj.headers[i].classList.add('selected');
+      // bottomCell
+      const bottomCell = obj.records[bottomMostRow]?.[c];
+      if (bottomCell?.element) {
+        const mergeSrc = bottomCell.element.getAttribute("data-merge-src");
+        if (mergeSrc && !visited[mergeSrc]) {
+          visited[mergeSrc] = true;
+          mergeSources.add(mergeSrc);
         }
+      }
     }
 
-    for (let j = borderTop; j <= borderBottom; j++) {
-        if (obj.rows[j] && obj.rows[j].element.style.display != 'none') {
-            // Left border
-            obj.records[j][borderLeft].element.classList.add('highlight-left');
-            // Right border
-            obj.records[j][borderRight].element.classList.add('highlight-right');
-            // Add selected from rows
-            obj.rows[j].element.classList.add('selected');
+    for (let r = topMostRow; r <= bottomMostRow; r++) {
+      const leftCell = obj.records[r]?.[leftMostCol];
+      if (leftCell?.element) {
+        const mergeSrc = leftCell.element.getAttribute("data-merge-src");
+        if (mergeSrc && !visited[mergeSrc]) {
+          visited[mergeSrc] = true;
+          mergeSources.add(mergeSrc);
         }
+      }
+
+      const rightCell = obj.records[r]?.[rightMostCol];
+      if (rightCell?.element) {
+        const mergeSrc = rightCell.element.getAttribute("data-merge-src");
+        if (mergeSrc && !visited[mergeSrc]) {
+          visited[mergeSrc] = true;
+          mergeSources.add(mergeSrc);
+        }
+      }
     }
 
-    obj.selectedContainer = [ borderLeft, borderTop, borderRight, borderBottom ];
-
-    // Handle events
-    if (previousState == 0) {
-        dispatch.call(obj, 'onfocus', obj);
-
-        removeCopyingSelection();
+    if (mergeSources.size === 0) {
+      break;
     }
 
-    dispatch.call(obj, 'onselection', obj, borderLeft, borderTop, borderRight, borderBottom, origin);
+    for (const src of mergeSources) {
+      const cell = getIdFromColumnName(src, true);
+      if (!Array.isArray(cell) || cell.length < 2) continue;
 
-    // Find corner cell
-    updateCornerPosition.call(obj);
-}
+      const [c, r] = cell;
+
+      const record = obj.records?.[r]?.[c];
+      if (!record?.element) continue;
+
+      const isCurCellMerged = record.element.getAttribute("data-merged");
+      if (!isCurCellMerged) continue;
+
+      const x = parseInt(record.element.getAttribute("data-x"));
+      const y = parseInt(record.element.getAttribute("data-y"));
+      const colspan = parseInt(record.element.getAttribute("colspan"));
+      const rowspan = parseInt(record.element.getAttribute("rowspan"));
+
+      if (colspan > 1) {
+        if (x < leftMostCol) {
+          leftMostCol = x;
+        }
+        if (x + colspan > rightMostCol) {
+          rightMostCol = x + colspan - 1;
+        }
+      }
+
+      if (rowspan > 1) {
+        if (y < topMostRow) {
+          topMostRow = y;
+        }
+        if (y + rowspan > bottomMostRow) {
+          bottomMostRow = y + rowspan - 1;
+        }
+      }
+    }
+  }
+
+  // Vertical limits
+  for (let j = topMostRow; j <= bottomMostRow; j++) {
+    if (obj.rows[j].element.style.display != "none") {
+      if (borderTop == null) {
+        borderTop = j;
+      }
+      borderBottom = j;
+    }
+  }
+
+  for (let i = leftMostCol; i <= rightMostCol; i++) {
+    for (let j = topMostRow; j <= bottomMostRow; j++) {
+      // Horizontal limits
+      if (
+        !obj.options.columns ||
+        !obj.options.columns[i] ||
+        obj.options.columns[i].type != "hidden"
+      ) {
+        if (borderLeft == null) {
+          borderLeft = i;
+        }
+        borderRight = i;
+      }
+    }
+  }
+
+  // Create borders
+  if (!borderLeft) {
+    borderLeft = 0;
+  }
+  if (!borderRight) {
+    borderRight = 0;
+  }
+
+  const ret = dispatch.call(
+    obj,
+    "onbeforeselection",
+    obj,
+    borderLeft,
+    borderTop,
+    borderRight,
+    borderBottom,
+    origin
+  );
+  if (ret === false) {
+    return false;
+  }
+
+  // Reset Selection
+  const previousState = obj.resetSelection();
+
+  // Keep selected cell
+  obj.selectedCell = [topLeftCol, topLeftRow, bottomRightCol, bottomRightRow];
+
+  // Add selected cell
+  if (obj.records[topLeftRow][topLeftCol]) {
+    obj.records[topLeftRow][topLeftCol].element.classList.add(
+      "highlight-selected"
+    );
+  }
+
+  // Redefining styles
+  for (let i = leftMostCol; i <= rightMostCol; i++) {
+    for (let j = topMostRow; j <= bottomMostRow; j++) {
+      if (
+        obj.rows[j].element.style.display != "none" &&
+        obj.records[j][i].element.style.display != "none"
+      ) {
+        obj.records[j][i].element.classList.add("highlight");
+        obj.highlighted.push(obj.records[j][i]);
+      }
+    }
+  }
+
+  for (let i = borderLeft; i <= borderRight; i++) {
+    if (
+      (!obj.options.columns ||
+        !obj.options.columns[i] ||
+        obj.options.columns[i].type != "hidden") &&
+      obj.cols[i].colElement.style &&
+      obj.cols[i].colElement.style.display != "none"
+    ) {
+      // Top border
+      if (obj.records[borderTop] && obj.records[borderTop][i]) {
+        obj.records[borderTop][i].element.classList.add("highlight-top");
+      }
+      // Bottom border
+      if (obj.records[borderBottom] && obj.records[borderBottom][i]) {
+        obj.records[borderBottom][i].element.classList.add("highlight-bottom");
+      }
+      // Add selected from headers
+      obj.headers[i].classList.add("selected");
+    }
+  }
+
+  for (let j = borderTop; j <= borderBottom; j++) {
+    if (obj.rows[j] && obj.rows[j].element.style.display != "none") {
+      // Left border
+      obj.records[j][borderLeft].element.classList.add("highlight-left");
+      // Right border
+      obj.records[j][borderRight].element.classList.add("highlight-right");
+      // Add selected from rows
+      obj.rows[j].element.classList.add("selected");
+    }
+  }
+
+  obj.selectedContainer = [borderLeft, borderTop, borderRight, borderBottom];
+
+  // Handle events
+  if (previousState == 0) {
+    dispatch.call(obj, "onfocus", obj);
+
+    removeCopyingSelection();
+  }
+
+  dispatch.call(
+    obj,
+    "onselection",
+    obj,
+    borderLeft,
+    borderTop,
+    borderRight,
+    borderBottom,
+    origin
+  );
+
+  // Find corner cell
+  updateCornerPosition.call(obj);
+};
 
 /**
  * Get selected column numbers
