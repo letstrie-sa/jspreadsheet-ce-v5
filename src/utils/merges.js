@@ -266,10 +266,7 @@ export const SA_setMerge = function ({
     }
 
     if (mergeMode === 'combine') {
-        obj.records[topLeftY][topLeftX].element.style.lineHeight = (obj.options.defaultRowHeight ?? 25) + "px";
-        console.log("Default row height is " + obj.options.defaultRowHeight)
-        console.log("lineHeight: " + obj.records[topLeftY][topLeftX].element.style.lineHeight)
-
+        obj.records[topLeftX][topLeftY].element.style.lineHeight = (obj.options.defaultRowHeight ?? 25) + "px";
         setStyle.call(obj, cellName, "lineHeight", (obj.options.defaultRowHeight ?? 25) + "px", true, true)
     }
 
