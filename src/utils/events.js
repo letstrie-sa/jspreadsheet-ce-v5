@@ -451,9 +451,8 @@ const mouseMoveControls = function(e) {
                 }
             } else if (libraryBase.jspreadsheet.current.dragging) {
                 if (libraryBase.jspreadsheet.current.dragging.column) {
-                    const columnId = e.target.getAttribute('data-x');
-                    if (columnId) {
-
+                    const columnId = e.target.getAttribute('data-x')
+                    if (columnId !== null || columnId!== undefined) {
                         if (isColMerged.call(libraryBase.jspreadsheet.current, columnId).length) {
                             console.error('Jspreadsheet: This column is part of a merged cell.');
                         } else {
@@ -644,7 +643,7 @@ const mouseOverControls = function(e) {
                 // Body found
                 if (jssTable[1] == 2) {
                     if (e.target.classList.contains('jss_row')) {
-                        if (libraryBase.jspreadsheet.current.selectedRow) {
+                        if (libraryBase.jspreadsheet.current.selectedRow !== false || libraryBase.jspreadsheet.current.selectedRow !== null) {
                             const o = libraryBase.jspreadsheet.current.selectedRow;
                             const d = rowId;
                             // Update selection
