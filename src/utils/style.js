@@ -12,6 +12,10 @@ export const getStyle = function(cell, key) {
 
     // Cell
     if (! cell) {
+        if(!(obj.options.data && obj.options.data.length > 0)) {
+            return {};
+        }
+
         // Control vars
         const data = {};
 
@@ -41,6 +45,12 @@ export const getStyle = function(cell, key) {
 
         return key ? obj.records[cell[1]][cell[0]].element.style[key] : obj.records[cell[1]][cell[0]].element.getAttribute('style');
     }
+}
+
+function isFalsyOrEmpty(value) {
+    if (!value) return true; // Covers falsy values: false, 0, "", null, undefined, NaN
+    if (typeof value === 'object' && Object.keys(value).length === 0) return true; // Empty object check
+    return false;
 }
 
 /**
@@ -117,14 +127,17 @@ export const setStyle = function(o, k, v, force, ignoreHistoryAndEvents) {
         newValue[keys[i]] = newValue[keys[i]].join(';');
     }
 
-    if (! ignoreHistoryAndEvents) {
-        // Keeping history of changes
-        setHistory.call(obj, {
-            action: 'setStyle',
+        if (
+          !ignoreHistoryAndEvents &&
+          !(isFalsyOrEmpty(oldValue) && isFalsyOrEmpty(newValue))
+        ) {
+          setHistory.call(obj, {
+            action: "setStyle",
             oldValue: oldValue,
             newValue: newValue,
-        });
-    }
+          });
+        }
+       
 
     dispatch.call(obj, 'onchangestyle', obj, newValue);
 }
