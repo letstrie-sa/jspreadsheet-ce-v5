@@ -261,8 +261,6 @@ export const updateSelectionFromCoords = function (
     }
   }
 
-  // 01979196081
-
   console.log(`updateSelectionFromCoords: 
     topLeftRow: ${topLeftRow},
     topLeftCol: ${topLeftCol},
