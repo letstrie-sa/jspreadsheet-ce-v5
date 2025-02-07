@@ -1396,65 +1396,65 @@ const keyDownControls = async function(e) {
                 last.call(libraryBase.jspreadsheet.current, e.shiftKey, e.ctrlKey);
                 e.preventDefault();
             } else if (e.which == 46 || e.which == 8) {
-                // // Delete
-                // if (libraryBase.jspreadsheet.current.options.editable != false) {
-                //     if (libraryBase.jspreadsheet.current.selectedRow) {
-                //         if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
-                //             const response = await SA_PROMPT(
-                //               "Are you sure to delete the selected rows?",
-                //               [
-                //                 {
-                //                   id: "yes",
-                //                   text: "Yes",
-                //                   type: "danger",
-                //                 },
-                //                 {
-                //                   id: "no",
-                //                   text: "No",
-                //                   type: "primary",
-                //                 },
-                //               ]
-                //             );
+                // Delete
+                if (libraryBase.jspreadsheet.current.options.editable != false) {
+                    if (libraryBase.jspreadsheet.current.selectedRow) {
+                        if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
+                            const response = await SA_PROMPT(
+                              "Are you sure to delete the selected rows?",
+                              [
+                                {
+                                  id: "yes",
+                                  text: "Yes",
+                                  type: "danger",
+                                },
+                                {
+                                  id: "no",
+                                  text: "No",
+                                  type: "primary",
+                                },
+                              ]
+                            );
 
-                //             if(response.id === 'yes') {
-                //                 libraryBase.jspreadsheet.current.deleteRow();
-                //             }
-                //         }
-                //     } else if (libraryBase.jspreadsheet.current.selectedHeader) {
-                //         if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
-                //             const response = await SA_PROMPT(
-                //               "Are you sure to delete the selected columns?",
-                //               [
-                //                 {
-                //                   id: "yes",
-                //                   text: "Yes",
-                //                   type: "danger",
-                //                   onclick: () => {
-                //                     libraryBase.jspreadsheet.current.deleteColumn();
-                //                   },
-                //                 },
-                //                 {
-                //                   id: "no",
-                //                   text: "No",
-                //                   type: "primary",
-                //                 },
-                //               ]
-                //             );
+                            if(response.id === 'yes') {
+                                libraryBase.jspreadsheet.current.deleteRow();
+                            }
+                        }
+                    } else if (libraryBase.jspreadsheet.current.selectedHeader) {
+                        if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
+                            const response = await SA_PROMPT(
+                              "Are you sure to delete the selected columns?",
+                              [
+                                {
+                                  id: "yes",
+                                  text: "Yes",
+                                  type: "danger",
+                                  onclick: () => {
+                                    libraryBase.jspreadsheet.current.deleteColumn();
+                                  },
+                                },
+                                {
+                                  id: "no",
+                                  text: "No",
+                                  type: "primary",
+                                },
+                              ]
+                            );
 
-                //             if (response.id === "yes") {
-                //               libraryBase.jspreadsheet.current.deleteColumn();
-                //             }
-                //         }
-                //     } else {
-                //         // Change value
-                //         libraryBase.jspreadsheet.current.setValue(
-                //             libraryBase.jspreadsheet.current.highlighted.map(function(record) {
-                //                 return record.element;
-                //             }),
-                //             ''
-                //         );
-                //     }
-                // }
+                            if (response.id === "yes") {
+                              libraryBase.jspreadsheet.current.deleteColumn();
+                            }
+                        }
+                    } else {
+                        // Change value
+                        libraryBase.jspreadsheet.current.setValue(
+                            libraryBase.jspreadsheet.current.highlighted.map(function(record) {
+                                return record.element;
+                            }),
+                            ''
+                        );
+                    }
+                }
             } else if (e.which == 13) {
                 // Move cursor
                 if (e.shiftKey) {
