@@ -609,8 +609,8 @@ const worksheetPublicMethods = [
     ['getHeaders', getHeaders],
     ['setHeader', setHeader],
     ['getStyle', getStyle],
-    ['setStyle', function(cell, property, value, forceOverwrite) {
-        return setStyle.call(this, cell, property, value, forceOverwrite);
+    ['setStyle', function(cell, property, value, forceOverwrite, ignoreHistoryAndEvents) {
+        return setStyle.call(this, cell, property, value, forceOverwrite, ignoreHistoryAndEvents);
     }],
     ['resetStyle', resetStyle],
     ['insertColumn', insertColumn],
