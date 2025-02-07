@@ -230,7 +230,7 @@ export const updateSelectionFromCoords = function (
   // Verify merged columns
   for (let c = leftMostCol; c <= rightMostCol; c++) {
     for (let r = topMostRow; r <= bottomMostRow; r++) {
-      const record = obj.records[r][c];
+      const record = obj.records?.[r]?.[c];
       if (!record) continue;
 
       const isCurCellMerged = record.element.getAttribute("data-merged");
@@ -280,7 +280,7 @@ export const updateSelectionFromCoords = function (
       // - - - - - - - - - bottomMostRow - - - - - - - - -
 
       // topCell
-      const topCell = obj.records[topMostRow]?.[c];
+      const topCell = obj.records?.[topMostRow]?.[c];
       if (topCell?.element) {
         const mergeSrc = topCell.element.getAttribute("data-merge-src");
         if (mergeSrc && !visited[mergeSrc]) {
@@ -290,7 +290,7 @@ export const updateSelectionFromCoords = function (
       }
 
       // bottomCell
-      const bottomCell = obj.records[bottomMostRow]?.[c];
+      const bottomCell = obj.records?.[bottomMostRow]?.[c];
       if (bottomCell?.element) {
         const mergeSrc = bottomCell.element.getAttribute("data-merge-src");
         if (mergeSrc && !visited[mergeSrc]) {
@@ -301,7 +301,7 @@ export const updateSelectionFromCoords = function (
     }
 
     for (let r = topMostRow; r <= bottomMostRow; r++) {
-      const leftCell = obj.records[r]?.[leftMostCol];
+      const leftCell = obj.records?.[r]?.[leftMostCol];
       if (leftCell?.element) {
         const mergeSrc = leftCell.element.getAttribute("data-merge-src");
         if (mergeSrc && !visited[mergeSrc]) {
@@ -310,7 +310,7 @@ export const updateSelectionFromCoords = function (
         }
       }
 
-      const rightCell = obj.records[r]?.[rightMostCol];
+      const rightCell = obj.records?.[r]?.[rightMostCol];
       if (rightCell?.element) {
         const mergeSrc = rightCell.element.getAttribute("data-merge-src");
         if (mergeSrc && !visited[mergeSrc]) {
@@ -363,7 +363,7 @@ export const updateSelectionFromCoords = function (
 
   // Vertical limits
   for (let j = topMostRow; j <= bottomMostRow; j++) {
-    if (obj.rows[j].element.style.display != "none") {
+    if (obj.rows[j] && obj.rows[j].element.style.display != "none") {
       if (borderTop == null) {
         borderTop = j;
       }
@@ -416,7 +416,7 @@ export const updateSelectionFromCoords = function (
   obj.selectedCell = [topLeftCol, topLeftRow, bottomRightCol, bottomRightRow];
 
   // Add selected cell
-  if (obj.records[topLeftRow][topLeftCol]) {
+  if (obj.records?.[topLeftRow]?.[topLeftCol]) {
     obj.records[topLeftRow][topLeftCol].element.classList.add(
       "highlight-selected"
     );
@@ -426,11 +426,11 @@ export const updateSelectionFromCoords = function (
   for (let i = leftMostCol; i <= rightMostCol; i++) {
     for (let j = topMostRow; j <= bottomMostRow; j++) {
       if (
-        obj.rows[j].element.style.display != "none" &&
+        obj.rows[j] && obj.rows[j].element.style.display != "none" &&
         obj.records[j][i].element.style.display != "none"
       ) {
         obj.records[j][i].element.classList.add("highlight");
-        obj.highlighted.push(obj.records[j][i]);
+        obj.highlighted.push(obj.records?.[j]?.[i]);
       }
     }
   }
@@ -444,12 +444,12 @@ export const updateSelectionFromCoords = function (
       obj.cols[i].colElement.style.display != "none"
     ) {
       // Top border
-      if (obj.records[borderTop] && obj.records[borderTop][i]) {
+      if (obj.records?.[borderTop] && obj.records?.[borderTop]?.[i]) {
         obj.records[borderTop][i].element.classList.add("highlight-top");
       }
       // Bottom border
-      if (obj.records[borderBottom] && obj.records[borderBottom][i]) {
-        obj.records[borderBottom][i].element.classList.add("highlight-bottom");
+      if (obj.records?.[borderBottom] && obj.records[borderBottom]?.[i]) {
+        obj.records[borderBottom][i]?.element.classList.add("highlight-bottom");
       }
       // Add selected from headers
       obj.headers[i].classList.add("selected");
@@ -459,9 +459,9 @@ export const updateSelectionFromCoords = function (
   for (let j = borderTop; j <= borderBottom; j++) {
     if (obj.rows[j] && obj.rows[j].element.style.display != "none") {
       // Left border
-      obj.records[j][borderLeft].element.classList.add("highlight-left");
+      obj.records?.[j]?.[borderLeft].element.classList.add("highlight-left");
       // Right border
-      obj.records[j][borderRight].element.classList.add("highlight-right");
+      obj.records?.[j]?.[borderRight].element.classList.add("highlight-right");
       // Add selected from rows
       obj.rows[j].element.classList.add("selected");
     }
@@ -621,7 +621,7 @@ export const copyData = function(o, d) {
         // Data columns
         for (let i = x1; i <= x2; i++) {
             // Update non-readonly
-            if (obj.records[j][i] && ! obj.records[j][i].element.classList.contains('readonly') && obj.records[j][i].element.style.display != 'none' && breakControl == false) {
+            if (obj.records?.[j]?.[i] && ! obj.records?.[j]?.[i]?.element.classList.contains('readonly') && obj.records?.[j]?.[i]?.element.style.display != 'none' && breakControl == false) {
                 // Stop if contains value
                 if (! obj.selection.length) {
                     if (obj.options.data[j][i] != '') {
@@ -817,7 +817,7 @@ export const getSelected = function(columnNameOnly) {
             if (columnNameOnly) {
                 cells.push(getCellNameFromCoords(x, y));
             } else {
-                cells.push(obj.records[y][x]);
+                cells.push(obj.records?.[y]?.[x]);
             }
         }
     }

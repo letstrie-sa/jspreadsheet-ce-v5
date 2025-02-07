@@ -9,9 +9,12 @@ import { copy, paste } from './copyPaste.js';
 import { openFilter } from './filter.js';
 import { loadDown, loadUp } from './lazyLoading.js';
 import { setWidth } from './columns.js';
-import { moveRow, setHeight } from './rows.js';
+import { createRow, moveRow, setHeight } from './rows.js';
 import { getCellNameFromCoords } from './helpers.js';
 import { SA_PROMPT } from './prompts.js';
+import { setHistory } from './history.js'
+import { updateTableReferences } from './internal.js'
+import dispatch from './dispatch.js'
 
 const getElement = function(element) {
     let jssSection = 0;
@@ -830,6 +833,60 @@ const defaultContextMenu = function(worksheet, x, y, role) {
                     worksheet.deleteColumn(worksheet.getSelectedColumns().length ? undefined : parseInt(x));
                 }
             });
+        }
+
+        // only show this option when row count is zero
+        if (worksheet.options.data.length === 0) {   
+            items.push({
+                title: jSuites.translate('Insert a new row'),
+                onclick: function () {
+                  const rowIndex = 0
+                  const rowRecords = []
+                  const rowData = []
+                  const rowNode = []
+                  worksheet.options.data[rowIndex] = []
+
+                  for (
+                    let col = 0;
+                    col < worksheet.options.columns.length;
+                    col++
+                  ) {
+                    worksheet.options.data[rowIndex][col] = ''
+                  }
+
+                  const newRow = createRow.call(
+                    worksheet,
+                    rowIndex,
+                    worksheet.options.data[rowIndex]
+                  )
+                  worksheet.tbody.appendChild(newRow.element)
+                  rowRecords.push(worksheet.records[row])
+                  rowData.push(worksheet.options.data[row])
+                  rowNode.push(newRow)
+
+                  // Keep history
+                  setHistory.call(worksheet, {
+                    action: 'insertRow',
+                    rowNumber: 0,
+                    numOfRows: 1,
+                    // insertBefore: undefined,
+                    rowRecords: rowRecords,
+                    rowData: rowData,
+                    rowNode: rowNode,
+                  })
+
+                  // Remove table references
+                  updateTableReferences.call(worksheet)
+
+                  // Events
+                  dispatch.call(
+                    worksheet,
+                    'oninsertrow',
+                    worksheet,
+                    onbeforeinsertrowRecords
+                  )
+                },
+            })
         }
 
         // Rename column
