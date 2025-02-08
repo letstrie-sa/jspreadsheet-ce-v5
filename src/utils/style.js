@@ -58,89 +58,140 @@ function isFalsyOrEmpty(value) {
  *
  * @return integer
  */
-export const setStyle = function(o, k, v, force, ignoreHistoryAndEvents) {
-    const obj = this;
+export const setStyle = function (
+  cell,
+  _property,
+  _value,
+  force,
+  ignoreHistoryAndEvents
+) {
+  const obj = this;
 
-    const newValue = {};
-    const oldValue = {};
+  const newValue = {};
+  const oldValue = {};
 
-    // Apply style
-    const applyStyle = function(cellId, key, value) {
-        // Position
-        const cell = getIdFromColumnName(cellId, true);
+  const applyStyle = function (
+    cellname,
+    key,
+    value,
+    partialImpDetected = false
+  ) {
+    const [y, x] = getIdFromColumnName(cellname, true);
 
-        if (obj.records[cell[1]] && obj.records[cell[1]][cell[0]] && (obj.records[cell[1]][cell[0]].element.classList.contains('readonly')==false || force)) {
-            // Current value
-            const currentValue = obj.records[cell[1]][cell[0]].element.style[key];
+    if (
+      obj.records[x] &&
+      obj.records[x][y] &&
+      (obj.records[x][y].element.classList.contains("readonly") == false ||
+        force)
+    ) {
+      const mergeSrc = obj.records[x][y].element.getAttribute("data-merge-src");
+      if (
+        typeof mergeSrc === "string" &&
+        mergeSrc.length > 0 &&
+        mergeSrc !== cellname
+      ) {
+        console.info("merge detected: " + cellname);
+        return;
+      }
 
-            // Change layout
-            if (currentValue == value && ! force) {
-                value = '';
-                obj.records[cell[1]][cell[0]].element.style[key] = '';
-            } else {
-                obj.records[cell[1]][cell[0]].element.style[key] = value;
-            }
+      // Current value
+      const currentValue = obj.records[x][y].element.style[key];
 
-            // History
-            if (! oldValue[cellId]) {
-                oldValue[cellId] = [];
-            }
-            if (! newValue[cellId]) {
-                newValue[cellId] = [];
-            }
+      if (force || partialImpDetected || currentValue != value) {
+        obj.records[x][y].element.style[key] = value;
+      } else {
+        value = "";
+        obj.records[x][y].element.style[key] = "";
+      }
 
-            oldValue[cellId].push([key + ':' + currentValue]);
-            newValue[cellId].push([key + ':' + value]);
-        }
+      // History
+      if (!oldValue[cellname]) {
+        oldValue[cellname] = [];
+      }
+      if (!newValue[cellname]) {
+        newValue[cellname] = [];
+      }
+
+      oldValue[cellname].push([key + ":" + currentValue]);
+      newValue[cellname].push([key + ":" + value]);
     }
+  };
 
-    if (k && v) {
-        // Get object from string
-        if (typeof(o) == 'string') {
-            applyStyle(o, k, v);
-        }
-    } else {
-        const keys = Object.keys(o);
-        for (let i = 0; i < keys.length; i++) {
-            let style = o[keys[i]];
-            if (typeof(style) == 'string') {
-                style = style.split(';');
-            }
-            for (let j = 0; j < style.length; j++) {
-                if (typeof(style[j]) == 'string') {
-                    style[j] = style[j].split(':');
-                }
-                // Apply value
-                if (style[j][0].trim()) {
-                    applyStyle(keys[i], style[j][0].trim(), style[j][1]);
-                }
-            }
-        }
+  if (_property && _value) {
+    // Get object from string
+    if (typeof cell == "string") {
+      applyStyle(cell, _property, _value);
     }
-
-    let keys = Object.keys(oldValue);
+  } else {
+    const cssRuleBasedMap = {};
+    const keys = Object.keys(cell);
     for (let i = 0; i < keys.length; i++) {
-        oldValue[keys[i]] = oldValue[keys[i]].join(';');
-    }
-    keys = Object.keys(newValue);
-    for (let i = 0; i < keys.length; i++) {
-        newValue[keys[i]] = newValue[keys[i]].join(';');
-    }
+      const cellname = keys[i];
 
-        if (
-          !ignoreHistoryAndEvents &&
-          !(isFalsyOrEmpty(oldValue) && isFalsyOrEmpty(newValue))
-        ) {
-          setHistory.call(obj, {
-            action: "setStyle",
-            oldValue: oldValue,
-            newValue: newValue,
-          });
+      const [y, x] = getIdFromColumnName(cellname, true);
+
+      let cssRules = cell[cellname];
+      if (typeof cssRules == "string") cssRules = cssRules.split(";");
+
+      for (let j = 0; j < cssRules.length; j++) {
+        if (typeof cssRules[j] == "string") {
+          cssRules[j] = cssRules[j].split(":").map((e) => e.trim());
         }
-       
 
-    dispatch.call(obj, 'onchangestyle', obj, newValue);
-}
+        // Example ===> [fontWeight, bold]
+        const [styleKey, styleValue] = cssRules[j];
+        // if (styleKey) applyStyle(cellname, styleKey, styleValue);
+
+        if (styleKey) {
+          const currentValue = obj.records[x][y].element.style[styleKey];
+          const curKey = `${styleKey}##${styleValue}`;
+          if (!cssRuleBasedMap[curKey]) cssRuleBasedMap[curKey] = [];
+          cssRuleBasedMap[curKey].push(cellname);
+        }
+      }
+    }
+
+    for (const kv in cssRuleBasedMap) {
+      const [styleKey, styleValue] = kv.split("##");
+      const cellnames = cssRuleBasedMap[kv];
+      let partialImpDetected = false;
+      for (const cname of cellnames) {
+        const [y, x] = getIdFromColumnName(cname, true);
+        if (obj.records[x] && obj.records[x][y]) {
+          const currentValue = obj.records[x][y].element.style[styleKey];
+          if (currentValue != styleValue) {
+            partialImpDetected = true;
+            break;
+          }
+        }
+      }
+      for (const cname of cellnames)
+        applyStyle(cname, styleKey, styleValue, partialImpDetected);
+    }
+  }
+
+  let keys = Object.keys(oldValue);
+  for (let i = 0; i < keys.length; i++) {
+    oldValue[keys[i]] = oldValue[keys[i]].join(";");
+  }
+  keys = Object.keys(newValue);
+  for (let i = 0; i < keys.length; i++) {
+    newValue[keys[i]] = newValue[keys[i]].join(";");
+  }
+
+  if (
+    !ignoreHistoryAndEvents &&
+    !(isFalsyOrEmpty(oldValue) && isFalsyOrEmpty(newValue))
+  ) {
+    setHistory.call(obj, {
+      action: "setStyle",
+      oldValue: oldValue,
+      newValue: newValue,
+    });
+
+    dispatch.call(obj, "onchangestyle", obj, newValue);
+  }
+};
 
 export const resetStyle = function(o, ignoreHistoryAndEvents) {
     const obj = this;
