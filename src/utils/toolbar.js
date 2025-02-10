@@ -112,7 +112,7 @@ export const getDefault = function () {
     },
   });
 
-  // Italic Text
+  // Line through
   items.push({
     content: "format_strikethrough",
     onclick: function (a, b, c) {
