@@ -2,89 +2,97 @@ import { getNumberOfColumns } from "./columns.js";
 import { createCell, updateTableReferences } from "./internal.js";
 import dispatch from "./dispatch.js";
 import { isRowMerged } from "./merges.js";
-import { conditionalSelectionUpdate, getSelectedRows, updateCornerPosition } from "./selection.js";
+import {
+  conditionalSelectionUpdate,
+  getSelectedRows,
+  updateCornerPosition,
+} from "./selection.js";
 import { setHistory } from "./history.js";
 import { getColumnNameFromId } from "./internalHelpers.js";
-import { SA_ALERT } from "./prompts.js"
+import { SA_ALERT } from "./prompts.js";
 
 /**
  * Create row
  */
-export const createRow = function(j, data) {
-    const obj = this;
+export const createRow = function (j, data) {
+  const obj = this;
 
-    // Create container
-    if (! obj.records[j]) {
-        obj.records[j] = [];
+  // Create container
+  if (!obj.records[j]) {
+    obj.records[j] = [];
+  }
+  // Default data
+  if (!data) {
+    data = obj.options.data[j];
+  }
+  // New line of data to be append in the table
+  const row = {
+    element: document.createElement("tr"),
+    y: j,
+  };
+
+  obj.rows[j] = row;
+
+  row.element.setAttribute("data-y", j);
+  // Index
+  let index = null;
+
+  // Set default row height
+  if (obj.options.defaultRowHeight) {
+    row.element.style.height = obj.options.defaultRowHeight + "px";
+  }
+
+  // Definitions
+  if (obj.options.rows && obj.options.rows[j]) {
+    if (obj.options.rows[j].height) {
+      row.element.style.height = obj.options.rows[j].height;
     }
-    // Default data
-    if (! data) {
-        data = obj.options.data[j];
+    if (obj.options.rows[j].title) {
+      index = obj.options.rows[j].title;
     }
-    // New line of data to be append in the table
-    const row = {
-        element: document.createElement('tr'),
-        y: j,
+  }
+  if (!index) {
+    index = parseInt(j + 1);
+  }
+  // Row number label
+  const td = document.createElement("td");
+  td.innerHTML = index;
+  td.setAttribute("data-y", j);
+  td.className = "jss_row";
+  row.element.appendChild(td);
+
+  const numberOfColumns = getNumberOfColumns.call(obj);
+
+  // Data columns
+  for (let i = 0; i < numberOfColumns; i++) {
+    // New column of data to be append in the line
+    obj.records[j][i] = {
+      element: createCell.call(this, i, j, data[i]),
+      x: i,
+      y: j,
     };
+    // Add column to the row
+    row.element.appendChild(obj.records[j][i].element);
 
-    obj.rows[j] = row;
-
-    row.element.setAttribute('data-y', j);
-    // Index
-    let index = null;
-
-    // Set default row height
-    if (obj.options.defaultRowHeight) {
-        row.element.style.height = obj.options.defaultRowHeight + 'px'
+    if (
+      obj.options.columns &&
+      obj.options.columns[i] &&
+      typeof obj.options.columns[i].render === "function"
+    ) {
+      obj.options.columns[i].render(
+        obj.records[j][i].element,
+        data[i],
+        parseInt(i),
+        parseInt(j),
+        obj,
+        obj.options.columns[i]
+      );
     }
+  }
 
-    // Definitions
-    if (obj.options.rows && obj.options.rows[j]) {
-        if (obj.options.rows[j].height) {
-            row.element.style.height = obj.options.rows[j].height;
-        }
-        if (obj.options.rows[j].title) {
-            index = obj.options.rows[j].title;
-        }
-    }
-    if (! index) {
-        index = parseInt(j + 1);
-    }
-    // Row number label
-    const td = document.createElement('td');
-    td.innerHTML = index;
-    td.setAttribute('data-y', j);
-    td.className = 'jss_row';
-    row.element.appendChild(td);
-
-    const numberOfColumns = getNumberOfColumns.call(obj);
-
-    // Data columns
-    for (let i = 0; i < numberOfColumns; i++) {
-        // New column of data to be append in the line
-        obj.records[j][i] = {
-            element: createCell.call(this, i, j, data[i]),
-            x: i,
-            y: j,
-        };
-        // Add column to the row
-        row.element.appendChild(obj.records[j][i].element);
-
-        if (obj.options.columns && obj.options.columns[i] && typeof obj.options.columns[i].render === 'function') {
-            obj.options.columns[i].render(
-                obj.records[j][i].element,
-                data[i],
-                parseInt(i),
-                parseInt(j),
-                obj,
-                obj.options.columns[i],
-            );
-        }
-    }
-
-    // Add row to the table body
-    return row;
-}
+  // Add row to the table body
+  return row;
+};
 
 /**
  * Insert a new row
@@ -270,8 +278,6 @@ export const insertRow = function (mixed, rowNumber, insertBefore) {
  * @return void
  */
 
-
-
 export const moveRow = function (o, d, ignoreDom) {
   const obj = this;
 
@@ -368,156 +374,164 @@ export const moveRow = function (o, d, ignoreDom) {
  * @param integer numOfRows - number of lines
  * @return void
  */
-export const deleteRow = function(rowNumber, numOfRows) {
-    const obj = this;
+export const deleteRow = function (rowNumber, numOfRows) {
+  const obj = this;
 
-    // Global Configuration
-    if (obj.options.allowDeleteRow != false) {
-        if (obj.options.allowDeletingAllRows == true || obj.options.data.length > 1) {
-            // Delete row definitions
-            if (rowNumber == undefined) {
-                const number = getSelectedRows.call(obj);
+  // Global Configuration
+  if (obj.options.allowDeleteRow != false) {
+    if (
+      obj.options.allowDeletingAllRows == true ||
+      obj.options.data.length > 1
+    ) {
+      // Delete row definitions
+      if (rowNumber == undefined) {
+        const number = getSelectedRows.call(obj);
 
-                if (number.length === 0) {
-                    rowNumber = obj.options.data.length - 1;
-                    numOfRows = 1;
-                } else {
-                    rowNumber = number[0];
-                    numOfRows = number.length;
-                }
-            }
-
-            // Last column
-            let lastRow = obj.options.data.length - 1;
-
-            if (rowNumber == undefined || rowNumber > lastRow || rowNumber < 0) {
-                rowNumber = lastRow;
-            }
-
-            if (! numOfRows) {
-                numOfRows = 1;
-            }
-
-            // Do not delete more than the number of records
-            if (rowNumber + numOfRows >= obj.options.data.length) {
-                numOfRows = obj.options.data.length - rowNumber;
-            }
-
-            // Onbeforedeleterow
-            const onbeforedeleterowRecords = [];
-            for (let i = 0; i < numOfRows; i++) {
-                onbeforedeleterowRecords.push(i + rowNumber);
-            }
-
-            if (dispatch.call(obj, 'onbeforedeleterow', obj, onbeforedeleterowRecords) === false) {
-                return false;
-            }
-
-            if (parseInt(rowNumber) > -1) {
-              // Merged cells
-              let mergeExists = false;
-              if (
-                obj.options.mergeCells &&
-                Object.keys(obj.options.mergeCells).length > 0
-              ) {
-                for (let row = rowNumber; row < rowNumber + numOfRows; row++) {
-                  if (isRowMerged.call(obj, row, false).length) {
-                    mergeExists = true;
-                  }
-                }
-              }
-              if (mergeExists) {
-                SA_ALERT(
-                  "Rows or columns with merged cells cannot be added or removed."
-                );
-                return false;
-              }
-
-              // Clear any search
-              if (obj.options.search == true) {
-                obj.resetSearch();
-                obj.results = null;
-              }
-
-              // If delete all rows, and set allowDeletingAllRows false, will stay one row
-              if (
-                obj.options.allowDeletingAllRows != true &&
-                lastRow + 1 === numOfRows
-              ) {
-                numOfRows--;
-                console.error(
-                  "Jspreadsheet: It is not possible to delete the last row"
-                );
-              }
-
-              // Remove node
-              for (let row = rowNumber; row < rowNumber + numOfRows; row++) {
-                if (
-                  Array.prototype.indexOf.call(
-                    obj.tbody.children,
-                    obj.rows[row].element
-                  ) >= 0
-                ) {
-                  obj.rows[row].element.className = "";
-                  obj.rows[row].element.parentNode.removeChild(
-                    obj.rows[row].element
-                  );
-                }
-              }
-
-              // Remove data
-              const rowRecords = obj.records.splice(rowNumber, numOfRows);
-              const rowData = obj.options.data.splice(rowNumber, numOfRows);
-              const rowNode = obj.rows.splice(rowNumber, numOfRows);
-
-              for (let j = rowNumber; j < obj.rows.length; j++) {
-                obj.rows[j].y = j;
-              }
-
-              for (let j = rowNumber; j < obj.records.length; j++) {
-                for (let i = 0; i < obj.records[j].length; i++) {
-                  obj.records[j][i].y = j;
-                }
-              }
-
-              // Respect pagination
-              if (
-                obj.options.pagination > 0 &&
-                obj.tbody.children.length != obj.options.pagination
-              ) {
-                obj.page(obj.pageNumber);
-              }
-
-              // Remove selection
-              conditionalSelectionUpdate.call(
-                obj,
-                1,
-                rowNumber,
-                rowNumber + numOfRows - 1
-              );
-
-              // Keep history
-              setHistory.call(obj, {
-                action: "deleteRow",
-                rowNumber: rowNumber,
-                numOfRows: numOfRows,
-                insertBefore: 1,
-                rowRecords: rowRecords,
-                rowData: rowData,
-                rowNode: rowNode,
-              });
-
-              // Remove table references
-              updateTableReferences.call(obj);
-
-              // Events
-              dispatch.call(obj, "ondeleterow", obj, onbeforedeleterowRecords);
-            }
+        if (number.length === 0) {
+          rowNumber = obj.options.data.length - 1;
+          numOfRows = 1;
         } else {
-            console.error('Jspreadsheet: It is not possible to delete the last row');
+          rowNumber = number[0];
+          numOfRows = number.length;
         }
+      }
+
+      // Last column
+      let lastRow = obj.options.data.length - 1;
+
+      if (rowNumber == undefined || rowNumber > lastRow || rowNumber < 0) {
+        rowNumber = lastRow;
+      }
+
+      if (!numOfRows) {
+        numOfRows = 1;
+      }
+
+      // Do not delete more than the number of records
+      if (rowNumber + numOfRows >= obj.options.data.length) {
+        numOfRows = obj.options.data.length - rowNumber;
+      }
+
+      // Onbeforedeleterow
+      const onbeforedeleterowRecords = [];
+      for (let i = 0; i < numOfRows; i++) {
+        onbeforedeleterowRecords.push(i + rowNumber);
+      }
+
+      if (
+        dispatch.call(
+          obj,
+          "onbeforedeleterow",
+          obj,
+          onbeforedeleterowRecords
+        ) === false
+      ) {
+        return false;
+      }
+
+      if (parseInt(rowNumber) > -1) {
+        // Merged cells
+        let mergeExists = false;
+        if (
+          obj.options.mergeCells &&
+          Object.keys(obj.options.mergeCells).length > 0
+        ) {
+          for (let row = rowNumber; row < rowNumber + numOfRows; row++) {
+            if (isRowMerged.call(obj, row, false).length) {
+              mergeExists = true;
+            }
+          }
+        }
+        if (mergeExists) {
+          SA_ALERT(
+            "Rows or columns with merged cells cannot be added or removed."
+          );
+          return false;
+        }
+
+        // Clear any search
+        if (obj.options.search == true) {
+          obj.resetSearch();
+          obj.results = null;
+        }
+
+        // If delete all rows, and set allowDeletingAllRows false, will stay one row
+        if (
+          obj.options.allowDeletingAllRows != true &&
+          lastRow + 1 === numOfRows
+        ) {
+          numOfRows--;
+          console.error(
+            "Jspreadsheet: It is not possible to delete the last row"
+          );
+        }
+
+        // Remove node
+        for (let row = rowNumber; row < rowNumber + numOfRows; row++) {
+          if (
+            Array.prototype.indexOf.call(
+              obj.tbody.children,
+              obj.rows[row].element
+            ) >= 0
+          ) {
+            obj.rows[row].element.className = "";
+            obj.rows[row].element.parentNode.removeChild(obj.rows[row].element);
+          }
+        }
+
+        // Remove data
+        const rowRecords = obj.records.splice(rowNumber, numOfRows);
+        const rowData = obj.options.data.splice(rowNumber, numOfRows);
+        const rowNode = obj.rows.splice(rowNumber, numOfRows);
+
+        for (let j = rowNumber; j < obj.rows.length; j++) {
+          obj.rows[j].y = j;
+        }
+
+        for (let j = rowNumber; j < obj.records.length; j++) {
+          for (let i = 0; i < obj.records[j].length; i++) {
+            obj.records[j][i].y = j;
+          }
+        }
+
+        // Respect pagination
+        if (
+          obj.options.pagination > 0 &&
+          obj.tbody.children.length != obj.options.pagination
+        ) {
+          obj.page(obj.pageNumber);
+        }
+
+        // Remove selection
+        conditionalSelectionUpdate.call(
+          obj,
+          1,
+          rowNumber,
+          rowNumber + numOfRows - 1
+        );
+
+        // Keep history
+        setHistory.call(obj, {
+          action: "deleteRow",
+          rowNumber: rowNumber,
+          numOfRows: numOfRows,
+          insertBefore: 1,
+          rowRecords: rowRecords,
+          rowData: rowData,
+          rowNode: rowNode,
+        });
+
+        // Remove table references
+        updateTableReferences.call(obj);
+
+        // Events
+        dispatch.call(obj, "ondeleterow", obj, onbeforedeleterowRecords);
+      }
+    } else {
+      console.error("Jspreadsheet: It is not possible to delete the last row");
     }
-}
+  }
+};
 
 /**
  * Get the row height
@@ -525,31 +539,31 @@ export const deleteRow = function(rowNumber, numOfRows) {
  * @param row - row number (first row is: 0)
  * @return height - current row height
  */
-export const getHeight = function(row) {
-    const obj = this;
+export const getHeight = function (row) {
+  const obj = this;
 
-    let data;
+  let data;
 
-    if (typeof row === 'undefined') {
-        // Get height of all rows
-        data = [];
-        for (let j = 0; j < obj.rows.length; j++) {
-            const h = obj.rows[j].element.style.height;
-            if (h) {
-                data[j] = h;
-            }
-        }
-    } else {
-        // In case the row is an object
-        if (typeof(row) == 'object') {
-            row = $(row).getAttribute('data-y');
-        }
-
-        data = obj.rows[row].element.style.height;
+  if (typeof row === "undefined") {
+    // Get height of all rows
+    data = [];
+    for (let j = 0; j < obj.rows.length; j++) {
+      const h = obj.rows[j].element.style.height;
+      if (h) {
+        data[j] = h;
+      }
+    }
+  } else {
+    // In case the row is an object
+    if (typeof row == "object") {
+      row = $(row).getAttribute("data-y");
     }
 
-    return data;
-}
+    data = obj.rows[row].element.style.height;
+  }
+
+  return data;
+};
 
 /**
  * Set the row height
@@ -558,110 +572,104 @@ export const getHeight = function(row) {
  * @param height - new row height
  * @param oldHeight - old row height
  */
-export const setHeight = function (row, height, oldHeight) {
-    const obj = this;
+export const setHeight = function (
+  row,
+  height,
+  oldHeight,
+  ignoreHistory = false
+) {
+  if (!(height > 0)) return;
 
-    if (height > 0) {
-        // Oldwidth
-        if (! oldHeight) {
-            oldHeight = obj.rows[row].element.getAttribute('height');
+  const obj = this;
 
-            if (! oldHeight) {
-                const rect = obj.rows[row].element.getBoundingClientRect();
-                oldHeight = rect.height;
-            }
-        }
+  if (!oldHeight) {
+    oldHeight = obj.rows[row].element.getAttribute("height");
 
-        // Integer
-        height = parseInt(height);
-
-        // Set width
-        obj.rows[row].element.style.height = height + 'px';
-
-        if (!obj.options.rows) {
-            obj.options.rows = [];
-        }
-
-        // Keep options updated
-        if (! obj.options.rows[row]) {
-            obj.options.rows[row] = {};
-        }
-        obj.options.rows[row].height = height;
-
-        // Keeping history of changes
-        setHistory.call(obj, {
-            action:'setHeight',
-            row:row,
-            oldValue:oldHeight,
-            newValue:height,
-        });
-
-        // On resize column
-        dispatch.call(obj, 'onresizerow', obj, row, height, oldHeight);
-
-        // Update corner position
-        updateCornerPosition.call(obj);
+    if (!oldHeight) {
+      const rect = obj.rows[row].element.getBoundingClientRect();
+      oldHeight = rect.height;
     }
-}
+  }
+
+  height = parseInt(height);
+  obj.rows[row].element.style.height = height + "px";
+
+  if (!obj.options.rows) obj.options.rows = {};
+  if (!obj.options.rows[row]) obj.options.rows[row] = {};
+  obj.options.rows[row].height = height;
+
+  updateCornerPosition.call(obj);
+
+  if (!ignoreHistory) {
+    setHistory.call(obj, {
+      action: "setHeight",
+      row: row,
+      oldValue: oldHeight,
+      newValue: height,
+      ignoreHistory
+    });
+
+    dispatch.call(obj, "onresizerow", obj, row, height, oldHeight);
+  }
+};
 
 /**
  * Show row
  */
-export const showRow = function(rowNumber) {
-    const obj = this;
+export const showRow = function (rowNumber) {
+  const obj = this;
 
-    if (!Array.isArray(rowNumber)) {
-        rowNumber = [rowNumber];
-    }
+  if (!Array.isArray(rowNumber)) {
+    rowNumber = [rowNumber];
+  }
 
-    rowNumber.forEach(function(rowIndex) {
-        obj.rows[rowIndex].element.style.display = '';
-    });
-}
+  rowNumber.forEach(function (rowIndex) {
+    obj.rows[rowIndex].element.style.display = "";
+  });
+};
 
 /**
  * Hide row
  */
-export const hideRow = function(rowNumber) {
-    const obj = this;
+export const hideRow = function (rowNumber) {
+  const obj = this;
 
-    if (!Array.isArray(rowNumber)) {
-        rowNumber = [rowNumber];
-    }
+  if (!Array.isArray(rowNumber)) {
+    rowNumber = [rowNumber];
+  }
 
-    rowNumber.forEach(function(rowIndex) {
-        obj.rows[rowIndex].element.style.display = 'none';
-    });
-
-}
+  rowNumber.forEach(function (rowIndex) {
+    obj.rows[rowIndex].element.style.display = "none";
+  });
+};
 
 /**
  * Get a row data by rowNumber
  */
-export const getRowData = function(rowNumber, processed) {
-    const obj = this;
+export const getRowData = function (rowNumber, processed) {
+  const obj = this;
 
-    if (processed) {
-        return obj.records[rowNumber].map(function(record) {
-            return record.element.innerHTML;
-        })
-    } else {
-        return obj.options.data[rowNumber];
-    }
-}
+  if (processed) {
+    return obj.records[rowNumber].map(function (record) {
+      return record.element.innerHTML;
+    });
+  } else {
+    return obj.options.data[rowNumber];
+  }
+};
 
 /**
  * Set a row data by rowNumber
  */
-export const setRowData = function(rowNumber, data, force) {
-    const obj = this;
+export const setRowData = function (rowNumber, data, force) {
+  const obj = this;
 
-    for (let i = 0; i < obj.headers.length; i++) {
-        // Update cell
-        const columnName = getColumnNameFromId([ i, rowNumber ]);
-        // Set value
-        if (data[i] != null) {
-            obj.setValue(columnName, data[i], force);
-        }
+  for (let i = 0; i < obj.headers.length; i++) {
+    // Update cell
+    const columnName = getColumnNameFromId([i, rowNumber]);
+    // Set value
+    if (data[i] != null) {
+      obj.setValue(columnName, data[i], force);
     }
-}
+  }
+};

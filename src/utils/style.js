@@ -90,7 +90,6 @@ export const setStyle = function (
         mergeSrc.length > 0 &&
         mergeSrc !== cellname
       ) {
-        console.info("merge detected: " + cellname);
         return;
       }
 
