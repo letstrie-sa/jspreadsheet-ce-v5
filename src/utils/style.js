@@ -69,14 +69,6 @@ export const setStyle = function (
   force,
   ignoreHistoryAndEvents
 ) {
-  console.log({
-    cell,
-    _property,
-    _value,
-    force,
-    ignoreHistoryAndEvents,
-  })
-
   const obj = this;
 
   const newValue = {};
@@ -137,8 +129,6 @@ export const setStyle = function (
       if (!newValue[cellname]) {
         newValue[cellname] = [];
       }
-
-      console.log("currentValue: " + currentValue + ", newValue: " + value)
 
       oldValue[cellname].push([key + ":" + currentValue]);
       newValue[cellname].push([key + ":" + value]);
@@ -213,11 +203,6 @@ export const setStyle = function (
   ) {
     setHistory.call(obj, {
       action: "setStyle",
-      oldValue: oldValue,
-      newValue: newValue,
-    });
-
-    console.log({
       oldValue: oldValue,
       newValue: newValue,
     });

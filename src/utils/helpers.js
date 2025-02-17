@@ -146,7 +146,7 @@ export const parseCSV = function (str, delimiter) {
 
 export const createFromTable = function (el, options) {
     if (el.tagName != 'TABLE') {
-        console.log('Element is not a table');
+        console.error('Element is not a table');
     } else {
         // Configuration
         if (!options) {

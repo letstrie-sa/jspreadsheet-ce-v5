@@ -261,12 +261,6 @@ export const updateSelectionFromCoords = function (
     }
   }
 
-  // console.log(`updateSelectionFromCoords: 
-  //   topLeftRow: ${topLeftRow},
-  //   topLeftCol: ${topLeftCol},
-  //   bottomRightRow: ${bottomRightRow},
-  //   bottomRightCol: ${bottomRightCol}`);
-
   let maxIterations = 10; // to prevent unexpected number of iterations...
   let visited = {};
   while (maxIterations-- > 0) {

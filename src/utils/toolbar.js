@@ -201,19 +201,19 @@ export const getDefault = function () {
               id: "top-left",
               text: "Top-Left",
               type: "primary",
-              onclick: () => console.log("Top-Left Value Selected"),
+              onclick: () => {},
             },
             {
               id: "combine",
               text: "All Data",
               type: "secondary",
-              onclick: () => console.log("All Data Combined"),
+              onclick: () => {},
             },
             {
               id: "close",
               text: "Cancel",
               type: "danger",
-              onclick: () => console.log("Operation Cancelled"),
+              onclick: () => {},
             },
           ]
         );
