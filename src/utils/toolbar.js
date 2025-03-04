@@ -233,6 +233,32 @@ export const getDefault = function () {
     },
   });
 
+  // Zoom In
+  items.push({
+    content: "zoom_in",
+    onclick: function () {
+      const worksheet = getActive();
+      const currentZoom = worksheet.getZoom();
+      worksheet.setZoom(currentZoom + 0.1); 
+    },
+    updateState: function (a, b, toolbarItem) {
+      setItemStatus(toolbarItem, getActive());
+    },
+  });
+
+  // Zoom Out
+  items.push({
+    content: "zoom_out",
+    onclick: function () {
+      const worksheet = getActive();
+      const currentZoom = worksheet.getZoom();
+      worksheet.setZoom(currentZoom - 0.1); 
+    },
+    updateState: function (a, b, toolbarItem) {
+      setItemStatus(toolbarItem, getActive());
+    },
+  });
+
   // items.push({
   //     content: 'fullscreen',
   //     tooltip: 'Toggle Fullscreen',

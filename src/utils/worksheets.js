@@ -53,6 +53,7 @@ import { getMerge, SA_removeMerge, SA_setMerge } from "./merges.js";
 import { resetSearch, search } from "./search.js";
 import { getHeader, getHeaders, setHeader } from "./headers.js";
 import { getStyle, resetStyle, setStyle } from "./style.js";
+import { getZoom, setZoom } from "./zoom.js";
 import { page, quantiyOfPages, whichPage } from "./pagination.js";
 import { download } from "./download.js";
 import { down, first, last, left, right, up } from "./keys.js";
@@ -796,6 +797,9 @@ const worksheetPublicMethods = [
   ["up", up],
   ["openFilter", openFilter],
   ["resetFilters", resetFilters],
+  
+  ["setZoom", setZoom],
+  ["getZoom", getZoom]
 ];
 
 const worksheetPublicMethodsLength = worksheetPublicMethods.length;
