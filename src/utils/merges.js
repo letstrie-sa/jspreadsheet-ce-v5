@@ -164,6 +164,19 @@ export const SA_setMerge = function ({
     cellValues: {},
   };
 
+  if (
+    !Array.isArray(obj.options.data) ||
+    obj.options.data.length <= topLeftX ||
+    obj.options.data[topLeftX].length <= topLeftY
+  ) {
+    SA_removeMerge.call(obj, {
+      cellName,
+      keepOptions: false,
+      ignoreHistoryAndEvents: true,
+    });
+    return;
+  }
+
   let topLeftValue = obj.options.data[topLeftX][topLeftY];
   let spaceSeparatedValue = "";
   let anyMergeCells = false;
@@ -232,6 +245,7 @@ export const SA_setMerge = function ({
         cellName,
         keepOptions: !askingForUnMerge,
         ignoreHistoryAndEvents: !askingForUnMerge,
+        dispatchEvent: false,
       });
     }
 
@@ -319,6 +333,7 @@ export const SA_removeMerge = function ({
   cellName,
   keepOptions = false,
   ignoreHistoryAndEvents = false,
+  dispatchEvent = true,
 }) {
   const obj = this;
 
@@ -329,6 +344,7 @@ export const SA_removeMerge = function ({
 
   const mergeCellsObj = obj.options.mergeCells[cellName];
   const saMergeCellsObj = obj.options.saMergeCells[cellName];
+  const [colspan, rowspan, elements] = mergeCellsObj;
 
   if (!keepOptions) {
     delete obj.options.mergeCells[cellName];
@@ -336,11 +352,15 @@ export const SA_removeMerge = function ({
   }
 
   const [y, x] = getIdFromColumnName(cellName, true); // [y, x]
+  if(! (x in obj.records && y in obj.records[x])) {
+    dispatch.call(obj, "onunmerge", obj, { [cellName]: [colspan, rowspan] });
+    return;
+  }
   obj.records[x][y].element.removeAttribute("colspan");
   obj.records[x][y].element.removeAttribute("rowspan");
   obj.records[x][y].element.removeAttribute("data-merged");
   obj.records[x][y].element.removeAttribute("data-merge-src");
-  const [colspan, rowspan, elements] = mergeCellsObj;
+
 
   let index = 0,
     rs,
@@ -399,5 +419,9 @@ export const SA_removeMerge = function ({
         mergeMode,
       },
     });
+  }
+
+  if (dispatchEvent) {
+    dispatch.call(obj, "onunmerge", obj, { [cellName]: [colspan, rowspan] });
   }
 };
