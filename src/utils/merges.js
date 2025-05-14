@@ -338,7 +338,12 @@ export const SA_removeMerge = function ({
   const obj = this;
 
   if (!(obj.options.mergeCells && obj.options.mergeCells[cellName])) {
-    console.error("Invalid merge request: cellName=", cellName);
+    console.warn("Invalid merge request: cellName=", cellName);
+    return;
+  }
+
+  if (!(obj.options.saMergeCells && obj.options.saMergeCells[cellName])) {
+    console.warn("Invalid merge request: cellName=", cellName);
     return;
   }
 
