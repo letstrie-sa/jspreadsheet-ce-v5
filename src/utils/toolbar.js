@@ -137,6 +137,7 @@ export const getDefault = function () {
     },
     onchange: function (a, b, c, value) {
       updateStyleOnSelectedCells("text-align", value);
+      if (value === "justify") updateStyleOnSelectedCells("text-align-last", value);
     },
     updateState: function (a, b, toolbarItem) {
       setItemStatus(toolbarItem, getActive());
