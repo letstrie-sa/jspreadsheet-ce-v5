@@ -524,6 +524,12 @@ export const deleteRow = function (rowNumber, numOfRows) {
         // Remove table references
         updateTableReferences.call(obj);
 
+        for (let i = 0; i < numOfRows; i++) {
+          if (obj.options.rows?.[rowNumber + i]) {
+            delete obj.options.rows[rowNumber + i]
+          }
+        }
+
         // Events
         dispatch.call(obj, "ondeleterow", obj, onbeforedeleterowRecords);
       }
@@ -583,16 +589,20 @@ export const setHeight = function (
   const obj = this;
 
   if (!oldHeight) {
-    oldHeight = obj.rows[row].element.getAttribute("height");
+    oldHeight = obj.rows[row]?.element?.getAttribute("height");
 
     if (!oldHeight) {
-      const rect = obj.rows[row].element.getBoundingClientRect();
-      oldHeight = rect.height;
+      const rect = obj.rows[row]?.element?.getBoundingClientRect()
+      if (rect && rect.height) {
+        oldHeight = rect.height;
+      }
     }
   }
 
   height = parseInt(height);
-  obj.rows[row].element.style.height = height + "px";
+  if (obj.rows?.[row]?.element?.style){
+    obj.rows[row].element.style.height = height + 'px'
+  }
 
   if (!obj.options.rows) obj.options.rows = {};
   if (!obj.options.rows[row]) obj.options.rows[row] = {};

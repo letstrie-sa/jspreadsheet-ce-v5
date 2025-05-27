@@ -759,20 +759,22 @@ export const setWidth = function (column, width, oldWidth, ignoreHistory = false
     for (let i = 0; i < column.length; i++) {
       if (!oldWidth[i]) {
         oldWidth[i] = parseInt(
-          obj.cols[column[i]].colElement.getAttribute("width")
+          obj.cols[column[i]]?.colElement?.getAttribute("width")
         );
       }
       const w = Array.isArray(width) && width[i] ? width[i] : width;
-      obj.cols[column[i]].colElement.setAttribute("width", w);
+      obj.cols[column[i]]?.colElement?.setAttribute("width", w);
 
       if (!obj.options.columns) obj.options.columns = [];
       if (!obj.options.columns[column[i]]) obj.options.columns[column[i]] = {};
       obj.options.columns[column[i]].width = w;
     }
   } else {
-    if (!oldWidth) oldWidth = parseInt(obj.cols[column].colElement.getAttribute("width"));
+    if (!oldWidth) {
+      oldWidth = parseInt(obj.cols[column]?.colElement?.getAttribute("width"));
+    }
 
-    obj.cols[column].colElement.setAttribute("width", width);
+    obj.cols[column]?.colElement?.setAttribute("width", width);
 
     if (!obj.options.columns) obj.options.columns = [];
     if (!obj.options.columns[column]) obj.options.columns[column] = {};
