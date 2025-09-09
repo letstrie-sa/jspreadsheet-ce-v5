@@ -9,7 +9,7 @@ export const openFilter = function(columnId) {
     const obj = this;
 
     if (! obj.options.filters) {
-        console.log('Jspreadsheet: filters not enabled.');
+        console.error('Jspreadsheet: filters not enabled.');
     } else {
         // Make sure is integer
         columnId = parseInt(columnId);

@@ -10,8 +10,8 @@ import { openFilter } from './filter.js';
 import { loadDown, loadUp } from './lazyLoading.js';
 import { setWidth } from './columns.js';
 import { moveRow, setHeight } from './rows.js';
-import version from './version.js';
 import { getCellNameFromCoords } from './helpers.js';
+import { SA_PROMPT } from './prompts.js';
 
 const getElement = function(element) {
     let jssSection = 0;
@@ -451,9 +451,8 @@ const mouseMoveControls = function(e) {
                 }
             } else if (libraryBase.jspreadsheet.current.dragging) {
                 if (libraryBase.jspreadsheet.current.dragging.column) {
-                    const columnId = e.target.getAttribute('data-x');
-                    if (columnId) {
-
+                    const columnId = e.target.getAttribute('data-x')
+                    if (columnId !== null || columnId!== undefined) {
                         if (isColMerged.call(libraryBase.jspreadsheet.current, columnId).length) {
                             console.error('Jspreadsheet: This column is part of a merged cell.');
                         } else {
@@ -644,7 +643,7 @@ const mouseOverControls = function(e) {
                 // Body found
                 if (jssTable[1] == 2) {
                     if (e.target.classList.contains('jss_row')) {
-                        if (libraryBase.jspreadsheet.current.selectedRow) {
+                        if (libraryBase.jspreadsheet.current.selectedRow !== false || libraryBase.jspreadsheet.current.selectedRow !== null) {
                             const o = libraryBase.jspreadsheet.current.selectedRow;
                             const d = rowId;
                             // Update selection
@@ -834,37 +833,37 @@ const defaultContextMenu = function(worksheet, x, y, role) {
         }
 
         // Rename column
-        if (worksheet.options.allowRenameColumn != false) {
-            items.push({
-                title: jSuites.translate('Rename this column'),
-                onclick:function() {
-                    const oldValue = worksheet.getHeader(x);
+        // if (worksheet.options.allowRenameColumn != false) {
+        //     items.push({
+        //         title: jSuites.translate('Rename this column'),
+        //         onclick:function() {
+        //             const oldValue = worksheet.getHeader(x);
 
-                    const newValue = prompt(jSuites.translate('Column name'), oldValue);
+        //             const newValue = prompt(jSuites.translate('Column name'), oldValue);
 
-                    worksheet.setHeader(x, newValue);
-                }
-            });
-        }
+        //             worksheet.setHeader(x, newValue);
+        //         }
+        //     });
+        // }
 
-        // Sorting
-        if (worksheet.options.columnSorting != false) {
-            // Line
-            items.push({ type:'line' });
+        // // Sorting
+        // if (worksheet.options.columnSorting != false) {
+        //     // Line
+        //     items.push({ type:'line' });
 
-            items.push({
-                title: jSuites.translate('Order ascending'),
-                onclick:function() {
-                    worksheet.orderBy(x, 0);
-                }
-            });
-            items.push({
-                title: jSuites.translate('Order descending'),
-                onclick:function() {
-                    worksheet.orderBy(x, 1);
-                }
-            });
-        }
+        //     items.push({
+        //         title: jSuites.translate('Order ascending'),
+        //         onclick:function() {
+        //             worksheet.orderBy(x, 0);
+        //         }
+        //     });
+        //     items.push({
+        //         title: jSuites.translate('Order descending'),
+        //         onclick:function() {
+        //             worksheet.orderBy(x, 1);
+        //         }
+        //     });
+        // }
     }
 
     if (role === 'row' || role === 'cell') {
@@ -896,89 +895,147 @@ const defaultContextMenu = function(worksheet, x, y, role) {
     }
 
     if (role === 'cell') {
-        if (worksheet.options.allowComments != false) {
-            items.push({ type:'line' });
+        const selection = worksheet.selectedContainer
+        if (selection.length === 4) {
+          const [topLeftY, topLeftX, bottomRightY, bottomRightX] = selection
+          let cellName = getCellNameFromCoords(topLeftY, topLeftX) // Like: B22, C1, B5
+          let colspan = bottomRightY - topLeftY + 1
+          let rowspan = bottomRightX - topLeftX + 1
 
-            const title = worksheet.records[y][x].element.getAttribute('title') || '';
+          const mergedCells = worksheet.getMerge(cellName)
 
-            items.push({
-                title: jSuites.translate(title ? 'Edit comments' : 'Add comments'),
-                onclick:function() {
-                    const comment = prompt(jSuites.translate('Comments'), title);
-                    if (comment) {
-                        worksheet.setComments(getCellNameFromCoords(x, y), comment);
-                    }
-                }
-            });
+          items.push({
+            title: jSuites.translate(
+              mergedCells ? 'Unmerge cells' : 'Merge cells'
+            ),
+            onclick: async function () {
+              if (mergedCells) {
+                return worksheet.SA_removeMerge({ cellName })
+              }
+              if (colspan !== 1 || rowspan !== 1) {
+                const response = await SA_PROMPT(
+                  'Select how you want to merge the selected cells. You can choose to keep only the top-left value, combine all data, or cancel the operation.',
+                  [
+                    {
+                      id: 'top-left',
+                      text: 'Top-Left',
+                      type: 'primary',
+                      onclick: () => {},
+                    },
+                    {
+                      id: 'combine',
+                      text: 'All Data',
+                      type: 'secondary',
+                      onclick: () => {},
+                    },
+                    {
+                      id: 'close',
+                      text: 'Cancel',
+                      type: 'danger',
+                      onclick: () => {},
+                    },
+                  ]
+                )
 
-            if (title) {
-                items.push({
-                    title: jSuites.translate('Clear comments'),
-                    onclick:function() {
-                        worksheet.setComments(getCellNameFromCoords(x, y), '');
-                    }
-                });
-            }
+                if (response.id === 'close') return
+
+                worksheet.SA_setMerge({
+                  cellName,
+                  rowspan,
+                  colspan,
+                  mergeMode: response.id,
+                })
+              }
+            },
+          })
         }
+
     }
+
+    // if (role === 'cell') {
+    //     if (worksheet.options.allowComments != false) {
+    //         items.push({ type:'line' });
+
+    //         const title = worksheet.records[y][x].element.getAttribute('title') || '';
+
+    //         items.push({
+    //             title: jSuites.translate(title ? 'Edit comments' : 'Add comments'),
+    //             onclick:function() {
+    //                 const comment = prompt(jSuites.translate('Comments'), title);
+    //                 if (comment) {
+    //                     worksheet.setComments(getCellNameFromCoords(x, y), comment);
+    //                 }
+    //             }
+    //         });
+
+    //         if (title) {
+    //             items.push({
+    //                 title: jSuites.translate('Clear comments'),
+    //                 onclick:function() {
+    //                     worksheet.setComments(getCellNameFromCoords(x, y), '');
+    //                 }
+    //             });
+    //         }
+    //     }
+    // }
 
     // Line
-    if (items.length !== 0) {
-        items.push({ type:'line' });
-    }
+    // if (items.length !== 0) {
+    //     items.push({ type:'line' });
+    // }
 
     // Copy
-    if (role === 'header' || role === 'row' || role === 'cell') {
-        items.push({
-            title: jSuites.translate('Copy') + '...',
-            shortcut:'Ctrl + C',
-            onclick:function() {
-                copy.call(worksheet, true);
-            }
-        });
+    // if (role === 'header' || role === 'row' || role === 'cell') {
+    //     items.push({
+    //         title: jSuites.translate('Copy') + '...',
+    //         shortcut:'Ctrl + C',
+    //         onclick:function() {
+    //             copy.call(worksheet, true);
+    //         }
+    //     });
 
-        // Paste
-        if (navigator && navigator.clipboard) {
-            items.push({
-                title: jSuites.translate('Paste') + '...',
-                shortcut:'Ctrl + V',
-                onclick:function() {
-                    if (worksheet.selectedCell) {
-                        navigator.clipboard.readText().then(function(text) {
-                            if (text) {
-                                paste.call(worksheet, worksheet.selectedCell[0], worksheet.selectedCell[1], text);
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    }
+    //     // Paste
+    //     if (navigator && navigator.clipboard) {
+    //         items.push({
+    //             title: jSuites.translate('Paste') + '...',
+    //             shortcut:'Ctrl + V',
+    //             onclick:function() {
+    //                 if (worksheet.selectedCell) {
+    //                     navigator.clipboard.readText().then(function(text) {
+    //                         if (text) {
+    //                             paste.call(worksheet, worksheet.selectedCell[0], worksheet.selectedCell[1], text);
+    //                         }
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     }
+    // }
 
     // Save
-    if (worksheet.parent.config.allowExport != false) {
-        items.push({
-            title: jSuites.translate('Save as') + '...',
-            shortcut: 'Ctrl + S',
-            onclick: function () {
-                worksheet.download();
-            }
-        });
-    }
+    // if (worksheet.parent.config.allowExport != false) {
+    //     items.push({
+    //         title: jSuites.translate('Save as') + '...',
+    //         shortcut: 'Ctrl + S',
+    //         onclick: function () {
+    //             worksheet.download();
+    //         }
+    //     });
+    // }
 
     // About
-    if (worksheet.parent.config.about != false) {
-        items.push({
-            title: jSuites.translate('About'),
-            onclick:function() {
-                if (typeof worksheet.parent.config.about === 'undefined' || worksheet.parent.config.about === true) {
-                    alert(version.print());
-                } else {
-                    alert(worksheet.parent.config.about);
-                }
-            }
-        });
-    }
+    // if (worksheet.parent.config.about != false) {
+    //     items.push({
+    //         title: jSuites.translate('About'),
+    //         onclick:function() {
+    //             if (typeof worksheet.parent.config.about === 'undefined' || worksheet.parent.config.about === true) {
+    //                 alert(version.print());
+    //             } else {
+    //                 alert(worksheet.parent.config.about);
+    //             }
+    //         }
+    //     });
+    // }
 
     return items;
 }
@@ -1197,7 +1254,7 @@ const validLetter = function (text) {
     return text.match(regex) ? 1 : 0;
 }
 
-const keyDownControls = function(e) {
+const keyDownControls = async function(e) {
     if (libraryBase.jspreadsheet.current) {
         if (libraryBase.jspreadsheet.current.edition) {
             if (e.which == 27) {
@@ -1282,30 +1339,65 @@ const keyDownControls = function(e) {
                 last.call(libraryBase.jspreadsheet.current, e.shiftKey, e.ctrlKey);
                 e.preventDefault();
             } else if (e.which == 46 || e.which == 8) {
-                // Delete
-                if (libraryBase.jspreadsheet.current.options.editable != false) {
-                    if (libraryBase.jspreadsheet.current.selectedRow) {
-                        if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
-                            if (confirm(jSuites.translate('Are you sure to delete the selected rows?'))) {
-                                libraryBase.jspreadsheet.current.deleteRow();
-                            }
-                        }
-                    } else if (libraryBase.jspreadsheet.current.selectedHeader) {
-                        if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
-                            if (confirm(jSuites.translate('Are you sure to delete the selected columns?'))) {
-                                libraryBase.jspreadsheet.current.deleteColumn();
-                            }
-                        }
-                    } else {
-                        // Change value
-                        libraryBase.jspreadsheet.current.setValue(
-                            libraryBase.jspreadsheet.current.highlighted.map(function(record) {
-                                return record.element;
-                            }),
-                            ''
-                        );
-                    }
-                }
+                // // Delete
+                // if (libraryBase.jspreadsheet.current.options.editable != false) {
+                //     if (libraryBase.jspreadsheet.current.selectedRow) {
+                //         if (libraryBase.jspreadsheet.current.options.allowDeleteRow != false) {
+                //             const response = await SA_PROMPT(
+                //               "Are you sure to delete the selected rows?",
+                //               [
+                //                 {
+                //                   id: "yes",
+                //                   text: "Yes",
+                //                   type: "danger",
+                //                 },
+                //                 {
+                //                   id: "no",
+                //                   text: "No",
+                //                   type: "primary",
+                //                 },
+                //               ]
+                //             );
+
+                //             if(response.id === 'yes') {
+                //                 libraryBase.jspreadsheet.current.deleteRow();
+                //             }
+                //         }
+                //     } else if (libraryBase.jspreadsheet.current.selectedHeader) {
+                //         if (libraryBase.jspreadsheet.current.options.allowDeleteColumn != false) {
+                //             const response = await SA_PROMPT(
+                //               "Are you sure to delete the selected columns?",
+                //               [
+                //                 {
+                //                   id: "yes",
+                //                   text: "Yes",
+                //                   type: "danger",
+                //                   onclick: () => {
+                //                     libraryBase.jspreadsheet.current.deleteColumn();
+                //                   },
+                //                 },
+                //                 {
+                //                   id: "no",
+                //                   text: "No",
+                //                   type: "primary",
+                //                 },
+                //               ]
+                //             );
+
+                //             if (response.id === "yes") {
+                //               libraryBase.jspreadsheet.current.deleteColumn();
+                //             }
+                //         }
+                //     } else {
+                //         // Change value
+                //         libraryBase.jspreadsheet.current.setValue(
+                //             libraryBase.jspreadsheet.current.highlighted.map(function(record) {
+                //                 return record.element;
+                //             }),
+                //             ''
+                //         );
+                //     }
+                // }
             } else if (e.which == 13) {
                 // Move cursor
                 if (e.shiftKey) {

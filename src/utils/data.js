@@ -4,7 +4,7 @@ import { getIdFromColumnName } from "./internalHelpers.js";
 import dispatch from "./dispatch.js";
 import { setHistory } from "./history.js";
 import { updatePagination } from "./pagination.js";
-import { setMerge } from "./merges.js";
+import { SA_setMerge } from "./merges.js";
 import { getCoordsFromRange } from "./helpers.js";
 
 export const setData = function(data) {
@@ -121,7 +121,13 @@ export const setData = function(data) {
         const keys = Object.keys(obj.options.mergeCells);
         for (let i = 0; i < keys.length; i++) {
             const num = obj.options.mergeCells[keys[i]];
-            setMerge.call(obj, keys[i], num[0], num[1], 1);
+            SA_setMerge.call(obj, {
+              cellName: keys[i],
+              colspan: num[0],
+              rowspan: num[1],
+              ignoreHistoryAndEvents: true,
+              dispatchEvent: false,
+            });
         }
     }
 

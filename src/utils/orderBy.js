@@ -1,9 +1,9 @@
-import jSuites from 'jsuites';
 import { setHistory } from './history.js';
 import dispatch from './dispatch.js';
 import { updateTableReferences } from './internal.js';
 import { loadPage } from './lazyLoading.js';
 import { closeFilter } from './filter.js';
+import { SA_ALERT } from './prompts.js'
 
 /**
  * Update order arrow
@@ -85,18 +85,17 @@ export const updateOrder = function(rows) {
 /**
  * Sort data and reload table
  */
+
+
+
 export const orderBy = function(column, order) {
     const obj = this;
 
     if (column >= 0) {
         // Merged cells
         if (obj.options.mergeCells && Object.keys(obj.options.mergeCells).length > 0) {
-            if (! confirm(jSuites.translate('This action will destroy any existing merged cells. Are you sure?'))) {
-                return false;
-            } else {
-                // Remove merged cells
-                obj.destroyMerge();
-            }
+            SA_ALERT("Rows or columns with merged cells cannot be ordered.")
+            return false;
         }
 
         // Direction
