@@ -191,6 +191,11 @@ export const SA_setMerge = function ({
 
       // TODO: Skip iterations by row/colSpan
 
+      if(!obj.records[x] || !obj.records[x][y]) {
+        console.warn("Invalid merge range, out of bounds:", cellName, colspan, rowspan);
+        continue;
+      }
+
       const name = getCellNameFromCoords(y, x);
       const isMerged = !!obj.records[x][y].element.getAttribute("data-merged");
       const rSpan = getSpan(obj.records[x][y].element.rowSpan);
@@ -277,6 +282,10 @@ export const SA_setMerge = function ({
   const data = [];
   for (let x = topLeftX; x <= bottomRightX; x++) {
     for (let y = topLeftY; y <= bottomRightY; y++) {
+      if(!obj.records[x] || !obj.records[x][y]) {
+        console.warn("Invalid merge range, out of bounds:", cellName, colspan, rowspan);
+        continue;
+      }
       if (!(topLeftY == y && topLeftX == x)) {
         data.push(obj.options.data[x][y]);
         updateCell.call(obj, y, x, "", true);
